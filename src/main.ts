@@ -136,46 +136,78 @@ export default class SidebarFlyoverPlus extends Plugin {
         // Toggle overlay class
         if (this.settings.overlayMode) {
             document.body.classList.add('sidebar-overlay-mode');
+            console.log("Overlay mode ENABLED");
         } else {
             document.body.classList.remove('sidebar-overlay-mode');
+            console.log("Overlay mode DISABLED");
         }
 
         this.updatePegState();
     }
 
     applySidebarWidth(split: any, width: number) {
-        if (!split || !split.containerEl) return;
+        if (!split || !split.containerEl) {
+            console.log("Cannot apply width - split or containerEl is null");
+            return;
+        }
+
+        const isRight = split === this.rightSplit;
+        const label = isRight ? "RIGHT" : "LEFT";
+
+        console.log(`Applying width to ${label} sidebar: ${width}px`);
 
         // Dynamic width check
         if ((split === this.leftSplit && this.settings.leftSidebarDynamicWidth) ||
             (split === this.rightSplit && this.settings.rightSidebarDynamicWidth)) {
              width = this.calculateDynamicWidth(split, split === this.leftSplit);
+             console.log(`Dynamic width calculated: ${width}px`);
         }
 
         split.containerEl.style.transition = `width ${this.settings.expandCollapseSpeed}ms ease, max-width ${this.settings.expandCollapseSpeed}ms ease`;
         split.containerEl.style.width = `${width}px`;
         split.containerEl.style.maxWidth = `${width}px`;
 
+        console.log(`${label} sidebar CSS applied: width=${width}px, maxWidth=${width}px`);
+
         try {
             // Try Obsidian internal methods to resize
-            if (typeof split.setSize === 'function') split.setSize(width);
-            else if (typeof split.setWidth === 'function') split.setWidth(width);
-            else if (typeof split.resize === 'function') split.resize();
-            else if (typeof split.onResize === 'function') split.onResize();
-        } catch (e) {
-            // Ignore errors
+            if (typeof split.setSize === 'function') {
+                split.setSize(width);
+                console.log(`${label} sidebar: setSize(${width}) called`);
+            } else if (typeof split.setWidth === 'function') {
+                split.setWidth(width);
+                console.log(`${label} sidebar: setWidth(${width}) called`);
+            } else if (typeof split.resize === 'function') {
+                split.resize();
+                console.log(`${label} sidebar: resize() called`);
+            } else if (typeof split.onResize === 'function') {
+                split.onResize();
+                console.log(`${label} sidebar: onResize() called`);
+            }
+        } catch (e: any) {
+            console.log(`${label} sidebar sizing error:`, e.message);
         }
     }
 
     // --- Expansion/Collapse Methods ---
 
     expandRight() {
-        if (!this.rightSplit) return;
+        if (!this.rightSplit) {
+            console.log("✗ rightSplit is null - cannot expand");
+            return;
+        }
+
+        console.log("Calling rightSplit.expand()");
         this.rightSplit.expand();
         this.isHoveringRight = true;
+
         setTimeout(() => {
+            console.log("Applying width to right sidebar");
             this.applySidebarWidth(this.rightSplit, this.settings.rightSidebarMaxWidth);
-            if (this.settings.rightSidebarPegged) this.updatePegState();
+
+            if (this.settings.rightSidebarPegged) {
+                this.updatePegState();
+            }
         }, 50);
     }
 
@@ -195,12 +227,18 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     collapseRight() {
-        if (this.settings.rightSidebarPinned) return;
-        // Prevent collapse if docked/pegged
-        if (this.settings.rightSidebarPegged) return;
+        // Check pin AND peg states - don't collapse if either is active
+        if (this.settings.rightSidebarPinned || this.settings.rightSidebarPegged) {
+            console.log("Right sidebar pinned or pegged - not collapsing");
+            return;
+        }
 
-        if (!this.rightSplit) return;
+        if (!this.rightSplit) {
+            console.log("✗ rightSplit is null - cannot collapse");
+            return;
+        }
 
+        console.log("Calling rightSplit.collapse()");
         this.isHoveringRight = false;
         this.rightSplit.collapse();
         this.updatePegState();
@@ -309,19 +347,34 @@ export default class SidebarFlyoverPlus extends Plugin {
         const clientX = e.clientX;
         const viewportWidth = document.body.clientWidth;
 
-        // RIGHT SIDEBAR
+        // RIGHT SIDEBAR DEBUG
         if (this.settings.rightSidebar && this.rightSplit) {
-            // Only trigger if sidebar exists AND is collapsed
             const isRightCollapsed = this.rightSplit.collapsed === true;
             const distanceFromRight = viewportWidth - clientX;
             const isNearRight = distanceFromRight <= this.settings.rightSideBarPixelTrigger;
 
+            // DEBUG LOGGING
+            console.log(`
+                Right Sidebar Status:
+                - Collapsed: ${isRightCollapsed}
+                - Mouse X: ${clientX}
+                - Viewport Width: ${viewportWidth}
+                - Distance from right: ${distanceFromRight}
+                - Trigger threshold: ${this.settings.rightSideBarPixelTrigger}
+                - Is near right: ${isNearRight}
+                - Currently hovering: ${this.isHoveringRight}
+                - Overlay mode: ${this.settings.overlayMode}
+                - Right sidebar element exists: ${!!this.rightSplit}
+            `);
+
             // Trigger expansion
             if (isNearRight && isRightCollapsed && !this.isHoveringRight) {
+                console.log("✓ RIGHT SIDEBAR TRIGGERED - Should expand");
                 this.isHoveringRight = true;
 
                 setTimeout(() => {
                     if (this.isHoveringRight && this.rightSplit.collapsed) {
+                        console.log("✓ RIGHT SIDEBAR EXPANDING");
                         if (this.settings.syncLeftRight && this.settings.leftSidebar) {
                             this.expandBoth();
                         } else {
@@ -331,18 +384,11 @@ export default class SidebarFlyoverPlus extends Plugin {
                 }, this.settings.sidebarExpandDelay);
             }
 
-            // Schedule collapse if we moved away (handled by generic check or mouseleave, but good to have safety)
-            // But main collapse logic is in mouseLeave or timeout checks in other places?
-            // Actually, the original logic had a fallback timeout.
-            // But if we are just moving mouse, we don't necessarily want to collapse unless we LEAVE the trigger zone AND didn't enter sidebar.
-            // The instructions say: "Schedule collapse"
+            // Schedule collapse
             if (!isNearRight && this.isHoveringRight) {
-                 // We are moving mouse outside trigger area.
-                 // If we haven't expanded yet (still in delay), we might want to cancel?
-                 // Or if we expanded, we are now relying on mouseEnter/Leave on the sidebar itself.
-                 // This specific check seems to be for "if I just grazed the edge but didn't enter".
                 setTimeout(() => {
                     if (!this.isHoveringRight) {
+                        console.log("✓ RIGHT SIDEBAR COLLAPSING");
                         if (this.settings.syncLeftRight && this.settings.leftSidebar) {
                             this.collapseBoth();
                         } else {
@@ -453,6 +499,7 @@ export default class SidebarFlyoverPlus extends Plugin {
         if (nativeButton) {
             nativeButton.style.display = 'none';
             nativeButton.setAttribute('aria-hidden', 'true');
+            nativeButton.setAttribute('inert', 'true');
         }
 
         // Now find the proper header container for your buttons
@@ -468,18 +515,20 @@ export default class SidebarFlyoverPlus extends Plugin {
         buttonGroup.style.display = 'flex';
         buttonGroup.style.alignItems = 'center';
         buttonGroup.style.gap = '2px';
-        buttonGroup.style.marginRight = '4px'; // Space from edge
+        buttonGroup.style.marginRight = 'auto'; // Push subsequent elements to the right
+        buttonGroup.style.marginLeft = '0px';
+        buttonGroup.style.paddingLeft = '4px';
 
-        // INSERT BEFORE OTHER BUTTONS (find where the other sidebar buttons are)
-        // This should be positioned where the native collapse button was
-        const existingButtons = headerContainer.querySelector('.clickable-icon');
-        if (existingButtons && existingButtons.parentElement) {
-            existingButtons.parentElement.insertBefore(
-                buttonGroup,
-                existingButtons
-            );
+        // Clean up existing group if present (re-injection safety)
+        const existingGroup = headerContainer.querySelector(".sidebar-flyover-button-group");
+        if (existingGroup) {
+            existingGroup.remove();
+        }
+
+        // INSERT AS FIRST CHILD to ensure left positioning
+        if (headerContainer.firstChild) {
+            headerContainer.insertBefore(buttonGroup, headerContainer.firstChild);
         } else {
-            // Fallback: append to header
             headerContainer.appendChild(buttonGroup);
         }
 

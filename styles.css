@@ -22,31 +22,61 @@
   box-shadow: rgba(0, 0, 0, 0.5) 10px 0px 18px -2px;
 }
 
-/* Right sidebar in overlay mode - FIXED positioning */
-.sidebar-overlay-mode .workspace-split.mod-right-split {
-  position: fixed; /* Changed from absolute to fixed */
+/* === RIGHT SIDEBAR - BASE STYLES (always applied) === */
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-right-split {
+  transition: width var(--sidebar-expand-collapse-speed) ease,
+              max-width var(--sidebar-expand-collapse-speed) ease;
+  max-width: var(--right-sidebar-max-width) !important;
+}
+
+/* === RIGHT SIDEBAR - OVERLAY MODE ONLY === */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split {
+  position: fixed;              /* Fixed positioning for overlay */
   right: 0;
   top: 0;
   height: 100vh;
   z-index: var(--layer-sidedock, 20);
   box-shadow: rgba(0, 0, 0, 0.5) -10px 0px 18px -2px;
-  max-width: var(--right-sidebar-max-width) !important;
   transition: width var(--sidebar-expand-collapse-speed) ease,
-              max-width var(--sidebar-expand-collapse-speed) ease;
+              max-width var(--sidebar-expand-collapse-speed) ease,
+              transform var(--sidebar-expand-collapse-speed) ease; /* ADD transform transition */
 }
 
-/* When RIGHT sidebar is collapsed, hide it off-screen */
-.sidebar-overlay-mode .workspace-split.mod-right-split.is-collapsed {
-  transform: translateX(100%); /* Push completely off-screen to the right */
+/* When RIGHT sidebar is COLLAPSED in overlay mode - hide off-screen */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split.is-collapsed {
+  transform: translateX(100%);   /* Only in overlay mode */
   pointer-events: none;
   visibility: hidden;
 }
 
-/* When expanded, show it */
-.sidebar-overlay-mode .workspace-split.mod-right-split:not(.is-collapsed) {
-  transform: translateX(0);
+/* When RIGHT sidebar is EXPANDED in overlay mode - show it */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split:not(.is-collapsed) {
+  transform: translateX(0);      /* Only in overlay mode */
   pointer-events: auto;
   visibility: visible;
+}
+
+/* When hovering over right sidebar, ensure it's visible */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split.hovered {
+  transform: translateX(0);    /* Make sure it's visible */
+  pointer-events: auto;
+  visibility: visible;
+  z-index: var(--layer-sidedock, 20);
+}
+
+/* Mouse is near right edge - prepare to show sidebar */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split:hover {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+/* === RIGHT SIDEBAR - NON-OVERLAY MODE === */
+/* In non-overlay (push/reflow) mode, the sidebar should expand/collapse normally */
+body:not(.sidebar-overlay-mode) .workspace-split.mod-horizontal.mod-right-split {
+  position: relative;            /* Normal flow */
+  transform: none;               /* No transform */
+  visibility: visible;
+  pointer-events: auto;
 }
 
 /* Hover Classes */
@@ -63,10 +93,13 @@
 
 /* Pin/Peg Buttons */
 .sidebar-flyover-button-group {
-  margin-right: 4px;
+  margin-right: auto;        /* Push to LEFT by giving auto margin on right */
+  margin-left: 4px;          /* Small left spacing */
   display: flex;
   gap: 2px;
   align-items: center;
+  flex-shrink: 0;            /* Don't shrink buttons */
+  order: -1;                 /* Ensure buttons come first in flex order */
 }
 
 /* Use Obsidian's native clickable-icon styling */
@@ -139,4 +172,17 @@ body.sidebar-docked .workspace-split.mod-right-split {
 body {
     transition: margin-left var(--sidebar-expand-collapse-speed) ease,
                 margin-right var(--sidebar-expand-collapse-speed) ease;
+}
+
+/* Diagnostic: Show z-index values */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split {
+  z-index: 25; /* Explicitly higher than sidedock layer */
+}
+
+.open-sidebar-hover-plugin .menu {
+  z-index: 30; /* Menu should be above sidebars */
+}
+
+.workspace-ribbon {
+  z-index: 10; /* Ribbon below sidebars */
 }
