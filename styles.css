@@ -92,14 +92,39 @@ body:not(.sidebar-overlay-mode) .workspace-split.mod-horizontal.mod-right-split 
 }
 
 /* Pin/Peg Buttons */
-.sidebar-flyover-button-group {
-  margin-right: auto;        /* Push to LEFT by giving auto margin on right */
-  margin-left: 4px;          /* Small left spacing */
+/* Right sidebar icon container - stays at right edge */
+.sidebar-right-icons-container {
   display: flex;
-  gap: 2px;
   align-items: center;
-  flex-shrink: 0;            /* Don't shrink buttons */
-  order: -1;                 /* Ensure buttons come first in flex order */
+  gap: 2px;
+  margin-left: auto;     /* Push to the right */
+  margin-right: 4px;     /* Small right spacing */
+  flex-shrink: 0;        /* Never shrink buttons */
+  padding-right: 4px;    /* Right padding for spacing */
+  position: relative;    /* Position context */
+  z-index: 10;           /* Above scrolling content */
+  order: 999;            /* Force to end of flex container */
+}
+
+/* Left sidebar button group - for consistency if needed */
+.sidebar-flyover-button-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;    /* Push to left */
+  margin-left: 4px;      /* Small left spacing */
+  flex-shrink: 0;        /* Don't shrink buttons */
+  padding-left: 4px;     /* Left padding for spacing */
+  order: -1;             /* Force to start of flex container */
+}
+
+/* Ensure header container maintains proper flex layout */
+.workspace-tab-header-container-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  flex: 1;
 }
 
 /* Use Obsidian's native clickable-icon styling */

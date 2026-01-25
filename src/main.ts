@@ -28,6 +28,9 @@ export default class SidebarFlyoverPlus extends Plugin {
     leftResizeObserver: ResizeObserver;
     rightResizeObserver: ResizeObserver;
 
+    // Check buttons interval
+    checkButtonsInterval: NodeJS.Timeout;
+
     async onload() {
         await this.loadSettings();
 
@@ -60,6 +63,130 @@ export default class SidebarFlyoverPlus extends Plugin {
 
             // Apply initial Peg state
             this.updatePegState();
+
+            // Re-check buttons periodically to ensure they persist
+            // when other plugins manipulate the sidebar
+            this.checkButtonsInterval = setInterval(() => {
+                this.ensureButtonsPersist();
+            }, 2000); // Check every 2 seconds
+
+            // ===== ADD COMMANDS FOR COMMANDER PLUGIN =====
+
+            // LEFT SIDEBAR PIN COMMAND
+            this.addCommand({
+                id: "sidebar-flyover-plus-toggle-left-pin",
+                name: "Toggle Left Sidebar Pin",
+                callback: () => {
+                    console.log("Command: Toggle Left Sidebar Pin");
+                    this.settings.leftSidebarPinned = !this.settings.leftSidebarPinned;
+                    this.saveSettings();
+
+                    if (this.leftSplit) {
+                        this.updatePinState(this.leftSplit, this.settings.leftSidebarPinned, this.leftPinButton);
+                        if (this.settings.leftSidebarPinned) {
+                            this.expandLeft();
+                        } else {
+                            this.collapseLeft();
+                        }
+                    }
+                }
+            });
+
+            // LEFT SIDEBAR DOCK/PEG COMMAND
+            this.addCommand({
+                id: "sidebar-flyover-plus-toggle-left-dock",
+                name: "Toggle Left Sidebar Dock",
+                callback: () => {
+                    console.log("Command: Toggle Left Sidebar Dock");
+                    this.toggleDockState(true); // true = left
+                }
+            });
+
+            // RIGHT SIDEBAR PIN COMMAND
+            this.addCommand({
+                id: "sidebar-flyover-plus-toggle-right-pin",
+                name: "Toggle Right Sidebar Pin",
+                callback: () => {
+                    console.log("Command: Toggle Right Sidebar Pin");
+                    this.settings.rightSidebarPinned = !this.settings.rightSidebarPinned;
+                    this.saveSettings();
+
+                    if (this.rightSplit) {
+                        this.updatePinState(this.rightSplit, this.settings.rightSidebarPinned, this.rightPinButton);
+                        if (this.settings.rightSidebarPinned) {
+                            this.expandRight();
+                        } else {
+                            this.collapseRight();
+                        }
+                    }
+                }
+            });
+
+            // RIGHT SIDEBAR DOCK/PEG COMMAND
+            this.addCommand({
+                id: "sidebar-flyover-plus-toggle-right-dock",
+                name: "Toggle Right Sidebar Dock",
+                callback: () => {
+                    console.log("Command: Toggle Right Sidebar Dock");
+                    this.toggleDockState(false); // false = right
+                }
+            });
+
+            // BONUS: Commands to expand/collapse without affecting pin state
+            this.addCommand({
+                id: "sidebar-flyover-plus-expand-left",
+                name: "Expand Left Sidebar",
+                callback: () => {
+                    console.log("Command: Expand Left Sidebar");
+                    this.expandLeft();
+                }
+            });
+
+            this.addCommand({
+                id: "sidebar-flyover-plus-collapse-left",
+                name: "Collapse Left Sidebar",
+                callback: () => {
+                    console.log("Command: Collapse Left Sidebar");
+                    this.collapseLeft();
+                }
+            });
+
+            this.addCommand({
+                id: "sidebar-flyover-plus-expand-right",
+                name: "Expand Right Sidebar",
+                callback: () => {
+                    console.log("Command: Expand Right Sidebar");
+                    this.expandRight();
+                }
+            });
+
+            this.addCommand({
+                id: "sidebar-flyover-plus-collapse-right",
+                name: "Collapse Right Sidebar",
+                callback: () => {
+                    console.log("Command: Collapse Right Sidebar");
+                    this.collapseRight();
+                }
+            });
+
+            // BONUS: Sync commands
+            this.addCommand({
+                id: "sidebar-flyover-plus-expand-both",
+                name: "Expand Both Sidebars",
+                callback: () => {
+                    console.log("Command: Expand Both Sidebars");
+                    this.expandBoth();
+                }
+            });
+
+            this.addCommand({
+                id: "sidebar-flyover-plus-collapse-both",
+                name: "Collapse Both Sidebars",
+                callback: () => {
+                    console.log("Command: Collapse Both Sidebars");
+                    this.collapseBoth();
+                }
+            });
         });
 
         this.addSettingTab(new SidebarFlyoverSettingTab(this.app, this));
@@ -71,18 +198,27 @@ export default class SidebarFlyoverPlus extends Plugin {
         document.body.classList.remove('open-sidebar-hover-plugin');
         document.body.classList.remove('sidebar-overlay-mode');
 
-        // Remove pinned/pegged/dynamic classes if any (optional, but good practice)
-        if (this.leftSplit && this.leftSplit.containerEl) {
-             this.leftSplit.containerEl.classList.remove('pinned', 'pegged', 'dynamic-width');
-             // Remove buttons? Usually Obsidian handles DOM cleanup of plugin containers, but we modified existing DOM.
-             // We should remove the buttons we added.
-             const buttons = this.leftSplit.containerEl.querySelectorAll('.sidebar-flyover-btn');
-             buttons.forEach((b: HTMLElement) => b.remove());
+        // Clean up interval
+        if (this.checkButtonsInterval) {
+            clearInterval(this.checkButtonsInterval);
         }
+
+        // Clean up left sidebar
+        if (this.leftSplit && this.leftSplit.containerEl) {
+            this.leftSplit.containerEl.classList.remove('pinned', 'pegged', 'dynamic-width');
+            // Remove only OUR buttons, not native Obsidian elements
+            const leftPinBtn = this.leftSplit.containerEl.querySelector('.pin-btn-left');
+            if (leftPinBtn) leftPinBtn.remove();
+            const leftPegBtn = this.leftSplit.containerEl.querySelector('.dock-btn-left');
+            if (leftPegBtn) leftPegBtn.remove();
+        }
+
+        // Clean up right sidebar
         if (this.rightSplit && this.rightSplit.containerEl) {
-             this.rightSplit.containerEl.classList.remove('pinned', 'pegged', 'dynamic-width');
-             const buttons = this.rightSplit.containerEl.querySelectorAll('.sidebar-flyover-btn');
-             buttons.forEach((b: HTMLElement) => b.remove());
+            this.rightSplit.containerEl.classList.remove('pinned', 'pegged', 'dynamic-width');
+            // Remove the entire right icon container and buttons
+            const rightIconContainer = this.rightSplit.containerEl.querySelector('.sidebar-right-icons-container');
+            if (rightIconContainer) rightIconContainer.remove();
         }
 
         // Cleanup Event Listeners
@@ -103,20 +239,20 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     updateButtonStates() {
-        if (this.leftSplit && this.leftSplit.containerEl) {
-            const pinBtn = this.leftSplit.containerEl.querySelector('.pin-btn');
-            if (pinBtn) this.updatePinState(this.leftSplit, this.settings.leftSidebarPinned, pinBtn as HTMLElement);
-
-            const pegBtn = this.leftSplit.containerEl.querySelector('.peg-btn');
-            if (pegBtn) this.updatePegBtnState(pegBtn as HTMLElement, this.settings.leftSidebarPegged);
+        // Update left sidebar buttons
+        if (this.leftPinButton) {
+            this.updatePinState(this.leftSplit, this.settings.leftSidebarPinned, this.leftPinButton);
+        }
+        if (this.leftPegButton) {
+            this.updatePegBtnState(this.leftPegButton, this.settings.leftSidebarPegged);
         }
 
-        if (this.rightSplit && this.rightSplit.containerEl) {
-             const pinBtn = this.rightSplit.containerEl.querySelector('.pin-btn');
-             if (pinBtn) this.updatePinState(this.rightSplit, this.settings.rightSidebarPinned, pinBtn as HTMLElement);
-
-             const pegBtn = this.rightSplit.containerEl.querySelector('.peg-btn');
-             if (pegBtn) this.updatePegBtnState(pegBtn as HTMLElement, this.settings.rightSidebarPegged);
+        // Update right sidebar buttons
+        if (this.rightPinButton) {
+            this.updatePinState(this.rightSplit, this.settings.rightSidebarPinned, this.rightPinButton);
+        }
+        if (this.rightPegButton) {
+            this.updatePegBtnState(this.rightPegButton, this.settings.rightSidebarPegged);
         }
 
         this.updatePegState();
@@ -486,133 +622,171 @@ export default class SidebarFlyoverPlus extends Plugin {
 
     // --- Feature Implementations ---
 
-    addSidebarButtons(split: any, isLeft: boolean) {
-        if (!split || !split.containerEl) return;
+    leftPinButton: HTMLElement;
+    leftPegButton: HTMLElement;
+    rightPinButton: HTMLElement;
+    rightPegButton: HTMLElement;
 
-        // FIND THE NATIVE EXPAND/COLLAPSE BUTTON
-        // The native button is typically in the header as a clickable-icon
-        const nativeButton = split.containerEl.querySelector(
-            '.workspace-tab-header-container .clickable-icon'
+    addSidebarButtons(e: any, t: boolean) {
+        // e = sidebar split, t = isLeft (true for left, false for right)
+        if (!e || !e.containerEl) return;
+
+        const sidebarLabel = t ? "left" : "right";
+        console.log(`Adding buttons to ${sidebarLabel} sidebar`);
+
+        // Step 1: Find the header container where OTHER plugins add their icons
+        const headerContainer = e.containerEl.querySelector(
+            ".workspace-tab-header-container-inner"
         );
-
-        // Hide the native button (don't remove it, just hide it)
-        if (nativeButton) {
-            nativeButton.style.display = 'none';
-            nativeButton.setAttribute('aria-hidden', 'true');
-            nativeButton.setAttribute('inert', 'true');
+        if (!headerContainer) {
+            console.log(`Cannot find header container for ${sidebarLabel} sidebar`);
+            return;
         }
 
-        // Now find the proper header container for your buttons
-        const headerContainer = split.containerEl.querySelector(
-            '.workspace-tab-header-container-inner'
-        );
+        // Step 2: Create INDIVIDUAL clickable icons (like other plugins do)
+        // Don't create a wrapper - just add icons directly to the native container
 
-        if (!headerContainer) return;
+        // Create PIN button
+        const pinButton = document.createElement("div");
+        pinButton.addClass("clickable-icon");
+        pinButton.addClass("sidebar-pin-btn");
+        pinButton.addClass(t ? "pin-btn-left" : "pin-btn-right");
+        pinButton.setAttribute("aria-label", t ? "Pin left sidebar" : "Pin right sidebar");
+        pinButton.setAttribute("role", "button");
+        pinButton.setAttribute("tabindex", "0");
+        pinButton.style.width = "24px";
+        pinButton.style.height = "24px";
+        pinButton.style.display = "flex";
+        pinButton.style.alignItems = "center";
+        pinButton.style.justifyContent = "center";
+        setIcon(pinButton, "pin");
 
-        // Create a button group container that mimics Obsidian's button style
-        const buttonGroup = document.createElement('div');
-        buttonGroup.addClass('sidebar-flyover-button-group');
-        buttonGroup.style.display = 'flex';
-        buttonGroup.style.alignItems = 'center';
-        buttonGroup.style.gap = '2px';
-        buttonGroup.style.marginRight = 'auto'; // Push subsequent elements to the right
-        buttonGroup.style.marginLeft = '0px';
-        buttonGroup.style.paddingLeft = '4px';
-
-        // Clean up existing group if present (re-injection safety)
-        const existingGroup = headerContainer.querySelector(".sidebar-flyover-button-group");
-        if (existingGroup) {
-            existingGroup.remove();
-        }
-
-        // INSERT AS FIRST CHILD to ensure left positioning
-        if (headerContainer.firstChild) {
-            headerContainer.insertBefore(buttonGroup, headerContainer.firstChild);
-        } else {
-            headerContainer.appendChild(buttonGroup);
-        }
-
-        // CREATE PIN BUTTON with proper Obsidian styling
-        const pinBtn = document.createElement('div');
-        pinBtn.addClass('clickable-icon'); // Use Obsidian's native class
-        pinBtn.addClass('sidebar-pin-btn');
-        pinBtn.addClass('pin-btn'); // Add identifying class for update logic
-        pinBtn.addClass(isLeft ? 'pin-btn-left' : 'pin-btn-right');
-        pinBtn.setAttribute('aria-label', isLeft ? 'Pin left sidebar' : 'Pin right sidebar');
-        pinBtn.setAttribute('role', 'button');
-        pinBtn.setAttribute('tabindex', '0');
-        pinBtn.style.width = '24px';
-        pinBtn.style.height = '24px';
-        pinBtn.style.display = 'flex';
-        pinBtn.style.alignItems = 'center';
-        pinBtn.style.justifyContent = 'center';
-
-        setIcon(pinBtn, 'pin'); // PIN icon
-
-        pinBtn.onclick = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-
-            if (isLeft) {
+        pinButton.onclick = (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            if (t) {
+                // LEFT sidebar pin
                 this.settings.leftSidebarPinned = !this.settings.leftSidebarPinned;
                 this.saveSettings();
-                this.updatePinState(split, this.settings.leftSidebarPinned, pinBtn);
-                if (this.settings.leftSidebarPinned) this.expandLeft(); // Auto-expand when pinned
+                this.updatePinState(e, this.settings.leftSidebarPinned, pinButton);
+                if (this.settings.leftSidebarPinned) {
+                    this.expandLeft();
+                }
             } else {
+                // RIGHT sidebar pin
                 this.settings.rightSidebarPinned = !this.settings.rightSidebarPinned;
                 this.saveSettings();
-                this.updatePinState(split, this.settings.rightSidebarPinned, pinBtn);
-                if (this.settings.rightSidebarPinned) this.expandRight(); // Auto-expand when pinned
+                this.updatePinState(e, this.settings.rightSidebarPinned, pinButton);
+                if (this.settings.rightSidebarPinned) {
+                    this.expandRight();
+                }
             }
         };
 
-        // Handle keyboard accessibility
-        pinBtn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                pinBtn.click();
+        pinButton.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                pinButton.click();
             }
         });
 
-        buttonGroup.appendChild(pinBtn);
+        // Create DOCK/PEG button
+        const pegButton = document.createElement("div");
+        pegButton.addClass("clickable-icon");
+        pegButton.addClass("sidebar-dock-btn");
+        pegButton.addClass("peg-btn");
+        pegButton.addClass(t ? "dock-btn-left" : "dock-btn-right");
+        pegButton.setAttribute("aria-label", t ? "Dock left sidebar" : "Dock right sidebar");
+        pegButton.setAttribute("role", "button");
+        pegButton.setAttribute("tabindex", "0");
+        pegButton.style.width = "24px";
+        pegButton.style.height = "24px";
+        pegButton.style.display = "flex";
+        pegButton.style.alignItems = "center";
+        pegButton.style.justifyContent = "center";
+        setIcon(pegButton, "square");
 
-        // CREATE DOCK/ANCHOR BUTTON with proper styling
-        const dockBtn = document.createElement('div');
-        dockBtn.addClass('clickable-icon'); // Use Obsidian's native class
-        dockBtn.addClass('sidebar-dock-btn');
-        dockBtn.addClass('peg-btn'); // Add identifying class for update logic
-        dockBtn.addClass(isLeft ? 'dock-btn-left' : 'dock-btn-right');
-        dockBtn.setAttribute('aria-label', isLeft ? 'Dock left sidebar' : 'Dock right sidebar');
-        dockBtn.setAttribute('role', 'button');
-        dockBtn.setAttribute('tabindex', '0');
-        dockBtn.style.width = '24px';
-        dockBtn.style.height = '24px';
-        dockBtn.style.display = 'flex';
-        dockBtn.style.alignItems = 'center';
-        dockBtn.style.justifyContent = 'center';
-
-        setIcon(dockBtn, 'square');
-
-        dockBtn.onclick = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            this.toggleDockState(isLeft);
-            this.updatePegBtnState(dockBtn, isLeft ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
+        pegButton.onclick = (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            this.toggleDockState(t);
+            this.updatePegBtnState(pegButton, t ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
         };
 
-        // Handle keyboard accessibility
-        dockBtn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                dockBtn.click();
+        pegButton.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                pegButton.click();
             }
         });
 
-        buttonGroup.appendChild(dockBtn);
+        // Step 3: CRITICAL - Add buttons to DIFFERENT positions based on sidebar
+        // LEFT sidebar: Add buttons to the LEFT (after native icons)
+        // RIGHT sidebar: Add buttons to the RIGHT (as the LAST items)
 
-        // Set initial states
-        this.updatePinState(split, isLeft ? this.settings.leftSidebarPinned : this.settings.rightSidebarPinned, pinBtn);
-        this.updatePegBtnState(dockBtn, isLeft ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
+        if (t) {
+            // LEFT SIDEBAR: Insert after any native expand/collapse button
+            // Find and hide the native expand/collapse button
+            const nativeCollapseBtn = e.containerEl.querySelector(
+                ".workspace-tab-header-container .clickable-icon"
+            );
+            if (nativeCollapseBtn) {
+                nativeCollapseBtn.style.display = "none";
+                nativeCollapseBtn.setAttribute("aria-hidden", "true");
+                nativeCollapseBtn.setAttribute("inert", "true");
+            }
+
+            // Add our buttons FIRST (left side)
+            if (headerContainer.firstChild) {
+                headerContainer.insertBefore(pinButton, headerContainer.firstChild);
+                // Insert peg button right after pin button
+                headerContainer.insertBefore(pegButton, pinButton.nextSibling);
+            } else {
+                headerContainer.appendChild(pinButton);
+                headerContainer.appendChild(pegButton);
+            }
+        } else {
+            // RIGHT SIDEBAR: Add buttons to the RIGHTMOST position
+            // These should be at the END of the header container to stay visible
+
+            // First, find and remove any existing button container from right sidebar
+            const existingGroup = e.containerEl.querySelector(".sidebar-right-icons-container");
+            if (existingGroup) {
+                existingGroup.remove();
+            }
+
+            // Create a persistent container for right sidebar icons
+            // This container will have special CSS to keep it at the right edge
+            const rightIconContainer = document.createElement("div");
+            rightIconContainer.addClass("sidebar-right-icons-container");
+            rightIconContainer.style.display = "flex";
+            rightIconContainer.style.alignItems = "center";
+            rightIconContainer.style.gap = "2px";
+            rightIconContainer.style.marginLeft = "auto";  // Push to right
+            rightIconContainer.style.marginRight = "4px";  // Small right spacing
+            rightIconContainer.style.flexShrink = "0";     // Don't shrink
+            rightIconContainer.style.paddingRight = "4px"; // Right padding
+
+            // Append buttons to the right container
+            rightIconContainer.appendChild(pinButton);
+            rightIconContainer.appendChild(pegButton);
+
+            // Add the container to the header
+            headerContainer.appendChild(rightIconContainer);
+        }
+
+        // Step 4: Update button states
+        this.updatePinState(e, t ? this.settings.leftSidebarPinned : this.settings.rightSidebarPinned, pinButton);
+        this.updatePegBtnState(pegButton, t ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
+
+        // Store references to buttons for later updates
+        if (t) {
+            this.leftPinButton = pinButton;
+            this.leftPegButton = pegButton;
+        } else {
+            this.rightPinButton = pinButton;
+            this.rightPegButton = pegButton;
+        }
     }
 
     updatePinState(split: any, pinned: boolean, btn: HTMLElement) {
@@ -767,5 +941,25 @@ export default class SidebarFlyoverPlus extends Plugin {
         const maxWidth = isLeft ? this.settings.leftSidebarMaxWidth : this.settings.rightSidebarMaxWidth;
 
         return Math.min(Math.max(scrollWidth + 20, minWidth), maxWidth);
+    }
+
+    ensureButtonsPersist() {
+        // Check left sidebar buttons
+        const leftPinMissing = !this.leftSplit?.containerEl?.querySelector(".pin-btn-left");
+        const leftPegMissing = !this.leftSplit?.containerEl?.querySelector(".dock-btn-left");
+
+        if (leftPinMissing || leftPegMissing) {
+            console.log("Left sidebar buttons missing - re-adding...");
+            this.addSidebarButtons(this.leftSplit, true);
+        }
+
+        // Check right sidebar buttons
+        const rightPinMissing = !this.rightSplit?.containerEl?.querySelector(".pin-btn-right");
+        const rightPegMissing = !this.rightSplit?.containerEl?.querySelector(".dock-btn-right");
+
+        if (rightPinMissing || rightPegMissing) {
+            console.log("Right sidebar buttons missing - re-adding...");
+            this.addSidebarButtons(this.rightSplit, false);
+        }
     }
 }
