@@ -1,8 +1,105 @@
-/*
+:root {
+  --sidebar-expand-collapse-speed: 370ms;
+  --sidebar-expand-delay: 200ms;
+  --left-sidebar-max-width: 325px;
+  --right-sidebar-max-width: 325px;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* Base Sidebar Styles */
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-left-split,
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-right-split {
+  transition: width var(--sidebar-expand-collapse-speed) ease,
+              max-width var(--sidebar-expand-collapse-speed) ease,
+              transform var(--sidebar-expand-collapse-speed) ease;
+}
 
-If your plugin does not need CSS, delete this file.
+/* Overlay Mode */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-left-split {
+  position: absolute;
+  left: var(--ribbon-width, 40px);
+  height: 100%;
+  z-index: var(--layer-sidedock);
+  box-shadow: rgba(0, 0, 0, 0.5) 10px 0px 18px -2px;
+}
 
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split {
+  position: absolute;
+  right: 0;
+  height: 100%;
+  z-index: var(--layer-sidedock);
+  box-shadow: rgba(0, 0, 0, 0.5) -10px 0px 18px -2px;
+}
+
+/* Hover Classes */
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-left-split.hovered,
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-right-split.hovered {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Menu Z-Index */
+.open-sidebar-hover-plugin .menu {
+  z-index: var(--layer-menu);
+}
+
+/* Pin/Peg Buttons */
+.sidebar-flyover-buttons {
+  padding: 4px;
+  gap: 4px;
+}
+
+.sidebar-flyover-btn {
+  opacity: 0.5;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.sidebar-flyover-btn:hover {
+  opacity: 1;
+  background-color: var(--background-modifier-hover);
+}
+
+.sidebar-flyover-btn.is-active {
+  opacity: 1;
+  color: var(--interactive-accent);
+}
+
+/* Pinned State */
+.workspace-split.mod-horizontal.mod-left-split.pinned,
+.workspace-split.mod-horizontal.mod-right-split.pinned {
+  /* Ensure it stays expanded if we rely on CSS, but JS handles expanding.
+     This is mostly for visual cues if needed. */
+}
+
+/* Pegged State */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-left-split.pegged,
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split.pegged {
+  position: relative; /* Reset from absolute */
+  z-index: auto;
+  box-shadow: none;
+  left: auto;
+  right: auto;
+  height: auto; /* Let flex handle it */
+}
+
+/* Dynamic Width */
+.workspace-split.mod-horizontal.mod-left-split.dynamic-width,
+.workspace-split.mod-horizontal.mod-right-split.dynamic-width {
+  width: auto;
+}
+
+/* Fix for ribbon z-index if overlay covers it?
+   Ribbon is usually separate. Left split overlay starts at left: var(--ribbon-width).
 */
+
+/* Transition for main content margin when pegged */
+body {
+    transition: margin-left var(--sidebar-expand-collapse-speed) ease,
+                margin-right var(--sidebar-expand-collapse-speed) ease;
+}
