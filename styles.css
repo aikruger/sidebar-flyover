@@ -22,12 +22,31 @@
   box-shadow: rgba(0, 0, 0, 0.5) 10px 0px 18px -2px;
 }
 
-.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split {
-  position: absolute;
+/* Right sidebar in overlay mode - FIXED positioning */
+.sidebar-overlay-mode .workspace-split.mod-right-split {
+  position: fixed; /* Changed from absolute to fixed */
   right: 0;
-  height: 100%;
-  z-index: var(--layer-sidedock);
+  top: 0;
+  height: 100vh;
+  z-index: var(--layer-sidedock, 20);
   box-shadow: rgba(0, 0, 0, 0.5) -10px 0px 18px -2px;
+  max-width: var(--right-sidebar-max-width) !important;
+  transition: width var(--sidebar-expand-collapse-speed) ease,
+              max-width var(--sidebar-expand-collapse-speed) ease;
+}
+
+/* When RIGHT sidebar is collapsed, hide it off-screen */
+.sidebar-overlay-mode .workspace-split.mod-right-split.is-collapsed {
+  transform: translateX(100%); /* Push completely off-screen to the right */
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* When expanded, show it */
+.sidebar-overlay-mode .workspace-split.mod-right-split:not(.is-collapsed) {
+  transform: translateX(0);
+  pointer-events: auto;
+  visibility: visible;
 }
 
 /* Hover Classes */
@@ -43,49 +62,71 @@
 }
 
 /* Pin/Peg Buttons */
-.sidebar-flyover-buttons {
-  padding: 4px;
-  gap: 4px;
-}
-
-.sidebar-flyover-btn {
-  opacity: 0.5;
-  transition: opacity 0.2s ease, color 0.2s ease;
-  cursor: pointer;
+.sidebar-flyover-button-group {
+  margin-right: 4px;
   display: flex;
+  gap: 2px;
   align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+}
+
+/* Use Obsidian's native clickable-icon styling */
+.sidebar-pin-btn,
+.sidebar-dock-btn {
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 
-.sidebar-flyover-btn:hover {
-  opacity: 1;
+.sidebar-pin-btn:hover,
+.sidebar-dock-btn:hover {
   background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
-.sidebar-flyover-btn.is-active {
-  opacity: 1;
+.sidebar-pin-btn.is-active,
+.sidebar-dock-btn.is-active {
   color: var(--interactive-accent);
+  background-color: rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+.sidebar-pin-btn:focus,
+.sidebar-dock-btn:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
 }
 
 /* Pinned State */
 .workspace-split.mod-horizontal.mod-left-split.pinned,
 .workspace-split.mod-horizontal.mod-right-split.pinned {
-  /* Ensure it stays expanded if we rely on CSS, but JS handles expanding.
-     This is mostly for visual cues if needed. */
+  /* Ensure it stays expanded if we rely on CSS, but JS handles expanding. */
 }
 
-/* Pegged State */
-.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-left-split.pegged,
-.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split.pegged {
-  position: relative; /* Reset from absolute */
+/* Docked state - sidebar stays expanded and pushes content */
+.workspace-split.mod-left-split.docked {
+  position: relative; /* Not absolute */
+  z-index: auto;     /* Normal z-index */
+}
+
+.workspace-split.mod-right-split.docked {
+  position: relative;
   z-index: auto;
+}
+
+/* When docked, disable overlay behavior */
+body.sidebar-docked .workspace-split.mod-left-split {
+  position: relative;
   box-shadow: none;
-  left: auto;
-  right: auto;
-  height: auto; /* Let flex handle it */
+}
+
+body.sidebar-docked .workspace-split.mod-right-split {
+  position: relative;
+  box-shadow: none;
+}
+
+/* Prevent collapse when docked */
+.workspace-split.docked.is-collapsed {
+  min-width: var(--sidebar-min-width, 200px);
 }
 
 /* Dynamic Width */
@@ -93,10 +134,6 @@
 .workspace-split.mod-horizontal.mod-right-split.dynamic-width {
   width: auto;
 }
-
-/* Fix for ribbon z-index if overlay covers it?
-   Ribbon is usually separate. Left split overlay starts at left: var(--ribbon-width).
-*/
 
 /* Transition for main content margin when pegged */
 body {

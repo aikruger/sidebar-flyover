@@ -196,20 +196,26 @@ export default class SidebarFlyoverPlus extends Plugin {
 
     collapseRight() {
         if (this.settings.rightSidebarPinned) return;
+        // Prevent collapse if docked/pegged
+        if (this.settings.rightSidebarPegged) return;
+
         if (!this.rightSplit) return;
 
         this.isHoveringRight = false;
         this.rightSplit.collapse();
-        if (this.settings.rightSidebarPegged) this.updatePegState();
+        this.updatePegState();
     }
 
     collapseLeft() {
         if (this.settings.leftSidebarPinned) return;
+        // Prevent collapse if docked/pegged
+        if (this.settings.leftSidebarPegged) return;
+
         if (!this.leftSplit) return;
 
         this.isHoveringLeft = false;
         this.leftSplit.collapse();
-        if (this.settings.leftSidebarPegged) this.updatePegState();
+        this.updatePegState();
     }
 
     collapseBoth() {
@@ -301,46 +307,81 @@ export default class SidebarFlyoverPlus extends Plugin {
 
     onMouseMove(e: MouseEvent) {
         const clientX = e.clientX;
-        const viewportWidth = document.body.clientWidth; // or app.workspace.containerEl.clientWidth
+        const viewportWidth = document.body.clientWidth;
 
-        // Right Sidebar Logic
-        if (this.settings.rightSidebar && !this.isHoveringRight && this.rightSplit && this.rightSplit.collapsed) {
-             if (clientX >= (viewportWidth - this.settings.rightSideBarPixelTrigger)) {
-                 this.isHoveringRight = true;
-                 setTimeout(() => {
-                     if (this.isHoveringRight) {
-                         if (this.settings.syncLeftRight) this.expandBoth();
-                         else this.expandRight();
-                     }
-                 }, this.settings.sidebarExpandDelay);
+        // RIGHT SIDEBAR
+        if (this.settings.rightSidebar && this.rightSplit) {
+            // Only trigger if sidebar exists AND is collapsed
+            const isRightCollapsed = this.rightSplit.collapsed === true;
+            const distanceFromRight = viewportWidth - clientX;
+            const isNearRight = distanceFromRight <= this.settings.rightSideBarPixelTrigger;
 
-                 // Fallback check
-                 setTimeout(() => {
-                     if (!this.isHoveringRight) {
-                         if (this.settings.syncLeftRight) this.collapseBoth();
-                         else this.collapseRight();
-                     }
-                 }, this.settings.sidebarDelay);
-             }
-        }
+            // Trigger expansion
+            if (isNearRight && isRightCollapsed && !this.isHoveringRight) {
+                this.isHoveringRight = true;
 
-        // Left Sidebar Logic
-        if (this.settings.leftSidebar && !this.isHoveringLeft && this.leftSplit && this.leftSplit.collapsed) {
-            if (clientX <= this.settings.leftSideBarPixelTrigger) {
-                this.isHoveringLeft = true;
                 setTimeout(() => {
-                    if (this.isHoveringLeft) {
-                        if (this.settings.syncLeftRight) this.expandBoth();
-                        else this.expandLeft();
+                    if (this.isHoveringRight && this.rightSplit.collapsed) {
+                        if (this.settings.syncLeftRight && this.settings.leftSidebar) {
+                            this.expandBoth();
+                        } else {
+                            this.expandRight();
+                        }
                     }
                 }, this.settings.sidebarExpandDelay);
+            }
 
-                 setTimeout(() => {
-                     if (!this.isHoveringLeft) {
-                         if (this.settings.syncLeftRight) this.collapseBoth();
-                         else this.collapseLeft();
-                     }
-                 }, this.settings.sidebarDelay);
+            // Schedule collapse if we moved away (handled by generic check or mouseleave, but good to have safety)
+            // But main collapse logic is in mouseLeave or timeout checks in other places?
+            // Actually, the original logic had a fallback timeout.
+            // But if we are just moving mouse, we don't necessarily want to collapse unless we LEAVE the trigger zone AND didn't enter sidebar.
+            // The instructions say: "Schedule collapse"
+            if (!isNearRight && this.isHoveringRight) {
+                 // We are moving mouse outside trigger area.
+                 // If we haven't expanded yet (still in delay), we might want to cancel?
+                 // Or if we expanded, we are now relying on mouseEnter/Leave on the sidebar itself.
+                 // This specific check seems to be for "if I just grazed the edge but didn't enter".
+                setTimeout(() => {
+                    if (!this.isHoveringRight) {
+                        if (this.settings.syncLeftRight && this.settings.leftSidebar) {
+                            this.collapseBoth();
+                        } else {
+                            this.collapseRight();
+                        }
+                    }
+                }, this.settings.sidebarDelay);
+            }
+        }
+
+        // LEFT SIDEBAR - mirror logic
+        if (this.settings.leftSidebar && this.leftSplit) {
+            const isLeftCollapsed = this.leftSplit.collapsed === true;
+            const isNearLeft = clientX <= this.settings.leftSideBarPixelTrigger;
+
+            if (isNearLeft && isLeftCollapsed && !this.isHoveringLeft) {
+                this.isHoveringLeft = true;
+
+                setTimeout(() => {
+                    if (this.isHoveringLeft && this.leftSplit.collapsed) {
+                        if (this.settings.syncLeftRight && this.settings.rightSidebar) {
+                            this.expandBoth();
+                        } else {
+                            this.expandLeft();
+                        }
+                    }
+                }, this.settings.sidebarExpandDelay);
+            }
+
+            if (!isNearLeft && this.isHoveringLeft) {
+                setTimeout(() => {
+                    if (!this.isHoveringLeft) {
+                        if (this.settings.syncLeftRight && this.settings.rightSidebar) {
+                            this.collapseBoth();
+                        } else {
+                            this.collapseLeft();
+                        }
+                    }
+                }, this.settings.sidebarDelay);
             }
         }
     }
@@ -402,59 +443,127 @@ export default class SidebarFlyoverPlus extends Plugin {
     addSidebarButtons(split: any, isLeft: boolean) {
         if (!split || !split.containerEl) return;
 
-        // Find header container. usually .workspace-tab-header-container
-        // Or .workspace-split > .workspace-tabs > .workspace-tab-header-container
-        const header = split.containerEl.querySelector('.workspace-tab-header-container');
-        if (!header) return;
+        // FIND THE NATIVE EXPAND/COLLAPSE BUTTON
+        // The native button is typically in the header as a clickable-icon
+        const nativeButton = split.containerEl.querySelector(
+            '.workspace-tab-header-container .clickable-icon'
+        );
 
-        // Container for our buttons
-        const btnContainer = document.createElement('div');
-        btnContainer.addClass('sidebar-flyover-buttons');
-        btnContainer.style.display = 'flex';
-        btnContainer.style.alignItems = 'center';
-        btnContainer.style.position = 'absolute';
-        btnContainer.style.top = '0';
-        btnContainer.style.right = isLeft ? '0' : '0'; // Both right of header? Or maybe left for left sidebar?
-        // Usually headers have tabs. We should probably prepend or append to header inner.
-        // Or just float absolute.
-        // Prompt says "Position it in the top-right corner of the sidebar header"
-        btnContainer.style.zIndex = '10';
+        // Hide the native button (don't remove it, just hide it)
+        if (nativeButton) {
+            nativeButton.style.display = 'none';
+            nativeButton.setAttribute('aria-hidden', 'true');
+        }
 
-        header.appendChild(btnContainer);
+        // Now find the proper header container for your buttons
+        const headerContainer = split.containerEl.querySelector(
+            '.workspace-tab-header-container-inner'
+        );
 
-        // Pin Button
-        const pinBtn = btnContainer.createEl('div', { cls: 'sidebar-flyover-btn pin-btn clickable-icon' });
-        setIcon(pinBtn, 'pin');
-        pinBtn.onclick = () => {
+        if (!headerContainer) return;
+
+        // Create a button group container that mimics Obsidian's button style
+        const buttonGroup = document.createElement('div');
+        buttonGroup.addClass('sidebar-flyover-button-group');
+        buttonGroup.style.display = 'flex';
+        buttonGroup.style.alignItems = 'center';
+        buttonGroup.style.gap = '2px';
+        buttonGroup.style.marginRight = '4px'; // Space from edge
+
+        // INSERT BEFORE OTHER BUTTONS (find where the other sidebar buttons are)
+        // This should be positioned where the native collapse button was
+        const existingButtons = headerContainer.querySelector('.clickable-icon');
+        if (existingButtons && existingButtons.parentElement) {
+            existingButtons.parentElement.insertBefore(
+                buttonGroup,
+                existingButtons
+            );
+        } else {
+            // Fallback: append to header
+            headerContainer.appendChild(buttonGroup);
+        }
+
+        // CREATE PIN BUTTON with proper Obsidian styling
+        const pinBtn = document.createElement('div');
+        pinBtn.addClass('clickable-icon'); // Use Obsidian's native class
+        pinBtn.addClass('sidebar-pin-btn');
+        pinBtn.addClass('pin-btn'); // Add identifying class for update logic
+        pinBtn.addClass(isLeft ? 'pin-btn-left' : 'pin-btn-right');
+        pinBtn.setAttribute('aria-label', isLeft ? 'Pin left sidebar' : 'Pin right sidebar');
+        pinBtn.setAttribute('role', 'button');
+        pinBtn.setAttribute('tabindex', '0');
+        pinBtn.style.width = '24px';
+        pinBtn.style.height = '24px';
+        pinBtn.style.display = 'flex';
+        pinBtn.style.alignItems = 'center';
+        pinBtn.style.justifyContent = 'center';
+
+        setIcon(pinBtn, 'pin'); // PIN icon
+
+        pinBtn.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
             if (isLeft) {
                 this.settings.leftSidebarPinned = !this.settings.leftSidebarPinned;
                 this.saveSettings();
                 this.updatePinState(split, this.settings.leftSidebarPinned, pinBtn);
+                if (this.settings.leftSidebarPinned) this.expandLeft(); // Auto-expand when pinned
             } else {
                 this.settings.rightSidebarPinned = !this.settings.rightSidebarPinned;
                 this.saveSettings();
                 this.updatePinState(split, this.settings.rightSidebarPinned, pinBtn);
+                if (this.settings.rightSidebarPinned) this.expandRight(); // Auto-expand when pinned
             }
         };
-        this.updatePinState(split, isLeft ? this.settings.leftSidebarPinned : this.settings.rightSidebarPinned, pinBtn);
 
-        // Peg Button
-        const pegBtn = btnContainer.createEl('div', { cls: 'sidebar-flyover-btn peg-btn clickable-icon' });
-        setIcon(pegBtn, 'anchor'); // 'anchor' looks like a peg? or 'lock'? 'anchor' is fine.
-        pegBtn.onclick = () => {
-            if (isLeft) {
-                this.settings.leftSidebarPegged = !this.settings.leftSidebarPegged;
-                this.saveSettings();
-                this.updatePegState();
-                this.updatePegBtnState(pegBtn, this.settings.leftSidebarPegged);
-            } else {
-                this.settings.rightSidebarPegged = !this.settings.rightSidebarPegged;
-                this.saveSettings();
-                this.updatePegState();
-                this.updatePegBtnState(pegBtn, this.settings.rightSidebarPegged);
+        // Handle keyboard accessibility
+        pinBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                pinBtn.click();
             }
+        });
+
+        buttonGroup.appendChild(pinBtn);
+
+        // CREATE DOCK/ANCHOR BUTTON with proper styling
+        const dockBtn = document.createElement('div');
+        dockBtn.addClass('clickable-icon'); // Use Obsidian's native class
+        dockBtn.addClass('sidebar-dock-btn');
+        dockBtn.addClass('peg-btn'); // Add identifying class for update logic
+        dockBtn.addClass(isLeft ? 'dock-btn-left' : 'dock-btn-right');
+        dockBtn.setAttribute('aria-label', isLeft ? 'Dock left sidebar' : 'Dock right sidebar');
+        dockBtn.setAttribute('role', 'button');
+        dockBtn.setAttribute('tabindex', '0');
+        dockBtn.style.width = '24px';
+        dockBtn.style.height = '24px';
+        dockBtn.style.display = 'flex';
+        dockBtn.style.alignItems = 'center';
+        dockBtn.style.justifyContent = 'center';
+
+        setIcon(dockBtn, 'square');
+
+        dockBtn.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            this.toggleDockState(isLeft);
+            this.updatePegBtnState(dockBtn, isLeft ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
         };
-        this.updatePegBtnState(pegBtn, isLeft ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
+
+        // Handle keyboard accessibility
+        dockBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                dockBtn.click();
+            }
+        });
+
+        buttonGroup.appendChild(dockBtn);
+
+        // Set initial states
+        this.updatePinState(split, isLeft ? this.settings.leftSidebarPinned : this.settings.rightSidebarPinned, pinBtn);
+        this.updatePegBtnState(dockBtn, isLeft ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
     }
 
     updatePinState(split: any, pinned: boolean, btn: HTMLElement) {
@@ -473,56 +582,65 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     updatePegState() {
-        // Handle Pegging logic (margins on body or main container)
-        // We can set margins on .app-container or document.body
+        // This method is now simplified - docking is handled in toggleDockState()
+        // This just manages CSS classes for visual feedback
 
-        let leftMargin = 0;
-        let rightMargin = 0;
-
-        if (this.settings.leftSidebarPegged && this.leftSplit && !this.leftSplit.collapsed) {
-             // Calculate target width to avoid transition timing issues
-             if (this.settings.leftSidebarDynamicWidth) {
-                 leftMargin = this.calculateDynamicWidth(this.leftSplit, true);
-             } else {
-                 leftMargin = this.settings.leftSidebarMaxWidth;
-             }
+        if (this.leftSplit) {
+            if (this.settings.leftSidebarPegged && !this.leftSplit.collapsed) {
+                this.leftSplit.containerEl.classList.add('docked');
+            } else {
+                this.leftSplit.containerEl.classList.remove('docked');
+            }
         }
 
-        if (this.settings.rightSidebarPegged && this.rightSplit && !this.rightSplit.collapsed) {
-             if (this.settings.rightSidebarDynamicWidth) {
-                 rightMargin = this.calculateDynamicWidth(this.rightSplit, false);
-             } else {
-                 rightMargin = this.settings.rightSidebarMaxWidth;
-             }
+        if (this.rightSplit) {
+            if (this.settings.rightSidebarPegged && !this.rightSplit.collapsed) {
+                this.rightSplit.containerEl.classList.add('docked');
+            } else {
+                this.rightSplit.containerEl.classList.remove('docked');
+            }
         }
+    }
 
-        // Apply to main content container.
-        // In Obsidian, .app-container usually contains splits.
-        // If we want to "push" main content, and we are in overlay mode (absolute positioning),
-        // we need to add margin to the element that sits UNDER the sidebars.
-        // But the sidebars are normally flex items.
-        // If overlayMode is ON, sidebars are absolute.
-        // So we need to add margin to .workspace-split.mod-root (the center)
-        // or just document.body if we want simple shift.
+    toggleDockState(isLeft: boolean) {
+        if (isLeft) {
+            this.settings.leftSidebarPegged = !this.settings.leftSidebarPegged;
 
-        // Wait, "When left sidebar pegged: ... document.body.style.marginLeft = ${width}px"
-        // Prompt instructions say: "Apply width adjustment: document.body.style.marginLeft = ${width}px when expanded"
-
-        if (this.settings.leftSidebarPegged && this.leftSplit && !this.leftSplit.collapsed) {
-            document.body.style.marginLeft = `${leftMargin}px`;
-            this.leftSplit.containerEl.classList.add('pegged');
+            if (this.settings.leftSidebarPegged) {
+                // DOCK IS NOW ACTIVE
+                // Keep the sidebar expanded and prevent collapse
+                this.expandLeft();
+                this.leftSplit.containerEl.classList.add('docked');
+                // Also ensure it stays in overlay: false mode OR resets to push mode
+                // by NOT using overlay mode for docked sidebars
+                document.body.classList.remove('sidebar-overlay-mode');
+            } else {
+                // DOCK IS NOW INACTIVE
+                // Return to normal hover behavior
+                this.leftSplit.containerEl.classList.remove('docked');
+                this.collapseLeft();
+                // Restore overlay mode if it was enabled
+                if (this.settings.overlayMode) {
+                    document.body.classList.add('sidebar-overlay-mode');
+                }
+            }
         } else {
-            document.body.style.marginLeft = '0px';
-             if (this.leftSplit) this.leftSplit.containerEl.classList.remove('pegged');
+            this.settings.rightSidebarPegged = !this.settings.rightSidebarPegged;
+
+            if (this.settings.rightSidebarPegged) {
+                this.expandRight();
+                this.rightSplit.containerEl.classList.add('docked');
+                document.body.classList.remove('sidebar-overlay-mode');
+            } else {
+                this.rightSplit.containerEl.classList.remove('docked');
+                this.collapseRight();
+                if (this.settings.overlayMode) {
+                    document.body.classList.add('sidebar-overlay-mode');
+                }
+            }
         }
 
-        if (this.settings.rightSidebarPegged && this.rightSplit && !this.rightSplit.collapsed) {
-            document.body.style.marginRight = `${rightMargin}px`;
-            this.rightSplit.containerEl.classList.add('pegged');
-        } else {
-            document.body.style.marginRight = '0px';
-            if (this.rightSplit) this.rightSplit.containerEl.classList.remove('pegged');
-        }
+        this.saveSettings();
     }
 
     setupDynamicWidth() {
