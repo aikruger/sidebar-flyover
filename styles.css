@@ -92,18 +92,77 @@ body:not(.sidebar-overlay-mode) .workspace-split.mod-horizontal.mod-right-split 
 }
 
 /* Pin/Peg Buttons */
-/* Right sidebar icon container - stays at right edge */
+
+/* === HEADER CONTAINER STYLING === */
+
+/* IMPORTANT: Only target sidebar headers, not tab bar headers */
+/* Tab bars use .workspace-tab-header-container, not a workspace-split parent */
+
+/* Left sidebar header container - size naturally */
+.open-sidebar-hover-plugin .workspace-split.mod-left-split .workspace-tab-header-container-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  /* Do NOT use flex: 1 - let it size to content */
+}
+
+/* Right sidebar header container - size naturally */
+.open-sidebar-hover-plugin .workspace-split.mod-right-split .workspace-tab-header-container-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  /* Do NOT use flex: 1 - let it size to content */
+}
+
+/* === PIN/DOCK BUTTON STYLING FOR BOTH SIDEBARS === */
+
+/* All sidebar buttons - fixed sizing */
+.open-sidebar-hover-plugin .sidebar-pin-btn,
+.open-sidebar-hover-plugin .sidebar-dock-btn {
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+  border-radius: 4px;
+  flex-shrink: 0;
+  width: 24px;           /* Fixed width */
+  height: 24px;          /* Fixed height */
+  padding: 0;            /* No padding */
+  margin: 0 2px;         /* Small gap between buttons */
+}
+
+/* === LEFT SIDEBAR BUTTONS (inserted at start) === */
+
+/* Left sidebar buttons are direct children of the header-inner */
+.open-sidebar-hover-plugin .workspace-split.mod-left-split .pin-btn-left,
+.open-sidebar-hover-plugin .workspace-split.mod-left-split .dock-btn-left {
+  flex-shrink: 0;
+  order: -1;  /* Ensure they stay at the start */
+  margin-right: 4px;  /* Space between buttons and title */
+}
+
+/* === RIGHT SIDEBAR BUTTONS (in container at end) === */
+
 .sidebar-right-icons-container {
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-left: auto;     /* Push to the right */
-  margin-right: 4px;     /* Small right spacing */
-  flex-shrink: 0;        /* Never shrink buttons */
-  padding-right: 4px;    /* Right padding for spacing */
-  position: relative;    /* Position context */
-  z-index: 10;           /* Above scrolling content */
-  order: 999;            /* Force to end of flex container */
+  margin-left: auto;     /* Push to right */
+  margin-right: 4px;     /* Right edge spacing */
+  flex-shrink: 0;        /* Don't shrink */
+  padding-right: 4px;
+  position: relative;
+  z-index: 10;
+  order: 999;            /* Force to end */
+  width: auto;           /* Size to content */
+  min-width: fit-content;
+}
+
+.sidebar-right-icons-container .clickable-icon {
+  flex-shrink: 0;
+  margin: 0 2px;
 }
 
 /* Left sidebar button group - for consistency if needed */
@@ -111,20 +170,8 @@ body:not(.sidebar-overlay-mode) .workspace-split.mod-horizontal.mod-right-split 
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-right: auto;    /* Push to left */
-  margin-left: 4px;      /* Small left spacing */
-  flex-shrink: 0;        /* Don't shrink buttons */
-  padding-left: 4px;     /* Left padding for spacing */
-  order: -1;             /* Force to start of flex container */
-}
-
-/* Ensure header container maintains proper flex layout */
-.workspace-tab-header-container-inner {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0;
-  flex: 1;
+  flex-shrink: 0;
+  /* Removed: margin-right, margin-left, padding-left, order */
 }
 
 /* Use Obsidian's native clickable-icon styling */

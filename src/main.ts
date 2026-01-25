@@ -654,11 +654,7 @@ export default class SidebarFlyoverPlus extends Plugin {
         pinButton.setAttribute("aria-label", t ? "Pin left sidebar" : "Pin right sidebar");
         pinButton.setAttribute("role", "button");
         pinButton.setAttribute("tabindex", "0");
-        pinButton.style.width = "24px";
-        pinButton.style.height = "24px";
-        pinButton.style.display = "flex";
-        pinButton.style.alignItems = "center";
-        pinButton.style.justifyContent = "center";
+        // Removed inline styles - CSS handles sizing
         setIcon(pinButton, "pin");
 
         pinButton.onclick = (event) => {
@@ -699,11 +695,7 @@ export default class SidebarFlyoverPlus extends Plugin {
         pegButton.setAttribute("aria-label", t ? "Dock left sidebar" : "Dock right sidebar");
         pegButton.setAttribute("role", "button");
         pegButton.setAttribute("tabindex", "0");
-        pegButton.style.width = "24px";
-        pegButton.style.height = "24px";
-        pegButton.style.display = "flex";
-        pegButton.style.alignItems = "center";
-        pegButton.style.justifyContent = "center";
+        // Removed inline styles - CSS handles sizing
         setIcon(pegButton, "square");
 
         pegButton.onclick = (event) => {
@@ -759,13 +751,7 @@ export default class SidebarFlyoverPlus extends Plugin {
             // This container will have special CSS to keep it at the right edge
             const rightIconContainer = document.createElement("div");
             rightIconContainer.addClass("sidebar-right-icons-container");
-            rightIconContainer.style.display = "flex";
-            rightIconContainer.style.alignItems = "center";
-            rightIconContainer.style.gap = "2px";
-            rightIconContainer.style.marginLeft = "auto";  // Push to right
-            rightIconContainer.style.marginRight = "4px";  // Small right spacing
-            rightIconContainer.style.flexShrink = "0";     // Don't shrink
-            rightIconContainer.style.paddingRight = "4px"; // Right padding
+            // Removed inline styles - CSS handles layout
 
             // Append buttons to the right container
             rightIconContainer.appendChild(pinButton);
