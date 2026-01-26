@@ -1,8 +1,260 @@
-/*
+:root {
+  --sidebar-expand-collapse-speed: 370ms;
+  --sidebar-expand-delay: 200ms;
+  --left-sidebar-max-width: 325px;
+  --right-sidebar-max-width: 325px;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* Base Sidebar Styles */
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-left-split,
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-right-split {
+  transition: width var(--sidebar-expand-collapse-speed) ease,
+              max-width var(--sidebar-expand-collapse-speed) ease,
+              transform var(--sidebar-expand-collapse-speed) ease;
+}
 
-If your plugin does not need CSS, delete this file.
+/* Overlay Mode */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-left-split {
+  position: absolute;
+  left: var(--ribbon-width, 40px);
+  height: 100%;
+  z-index: var(--layer-sidedock);
+  box-shadow: rgba(0, 0, 0, 0.5) 10px 0px 18px -2px;
+}
 
-*/
+/* === RIGHT SIDEBAR - BASE STYLES (always applied) === */
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-right-split {
+  transition: width var(--sidebar-expand-collapse-speed) ease,
+              max-width var(--sidebar-expand-collapse-speed) ease;
+  max-width: var(--right-sidebar-max-width) !important;
+}
+
+/* === RIGHT SIDEBAR - OVERLAY MODE ONLY === */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split {
+  position: fixed;              /* Fixed positioning for overlay */
+  right: 0;
+  top: 0;
+  height: 100vh;
+  z-index: var(--layer-sidedock, 20);
+  box-shadow: rgba(0, 0, 0, 0.5) -10px 0px 18px -2px;
+  transition: width var(--sidebar-expand-collapse-speed) ease,
+              max-width var(--sidebar-expand-collapse-speed) ease,
+              transform var(--sidebar-expand-collapse-speed) ease; /* ADD transform transition */
+}
+
+/* When RIGHT sidebar is COLLAPSED in overlay mode - hide off-screen */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split.is-collapsed {
+  transform: translateX(100%);   /* Only in overlay mode */
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* When RIGHT sidebar is EXPANDED in overlay mode - show it */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split:not(.is-collapsed) {
+  transform: translateX(0);      /* Only in overlay mode */
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* When hovering over right sidebar, ensure it's visible */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split.hovered {
+  transform: translateX(0);    /* Make sure it's visible */
+  pointer-events: auto;
+  visibility: visible;
+  z-index: var(--layer-sidedock, 20);
+}
+
+/* Mouse is near right edge - prepare to show sidebar */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split:hover {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+/* === RIGHT SIDEBAR - NON-OVERLAY MODE === */
+/* In non-overlay (push/reflow) mode, the sidebar should expand/collapse normally */
+body:not(.sidebar-overlay-mode) .workspace-split.mod-horizontal.mod-right-split {
+  position: relative;            /* Normal flow */
+  transform: none;               /* No transform */
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Hover Classes */
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-left-split.hovered,
+.open-sidebar-hover-plugin .workspace-split.mod-horizontal.mod-right-split.hovered {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Menu Z-Index */
+.open-sidebar-hover-plugin .menu {
+  z-index: var(--layer-menu);
+}
+
+/* Pin/Peg Buttons */
+
+/* === HEADER CONTAINER STYLING === */
+
+/* IMPORTANT: Only target sidebar headers, not tab bar headers */
+/* Tab bars use .workspace-tab-header-container, not a workspace-split parent */
+
+/* Left sidebar header container - size naturally */
+.open-sidebar-hover-plugin .workspace-split.mod-left-split .workspace-tab-header-container-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  /* Do NOT use flex: 1 - let it size to content */
+}
+
+/* Right sidebar header container - size naturally */
+.open-sidebar-hover-plugin .workspace-split.mod-right-split .workspace-tab-header-container-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  /* Do NOT use flex: 1 - let it size to content */
+}
+
+/* === PIN/DOCK BUTTON STYLING FOR BOTH SIDEBARS === */
+
+/* All sidebar buttons - fixed sizing */
+.open-sidebar-hover-plugin .sidebar-pin-btn,
+.open-sidebar-hover-plugin .sidebar-dock-btn {
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+  border-radius: 4px;
+  flex-shrink: 0;
+  width: 24px;           /* Fixed width */
+  height: 24px;          /* Fixed height */
+  padding: 0;            /* No padding */
+  margin: 0 2px;         /* Small gap between buttons */
+}
+
+/* === LEFT SIDEBAR BUTTONS (inserted at start) === */
+
+/* Left sidebar buttons are direct children of the header-inner */
+.open-sidebar-hover-plugin .workspace-split.mod-left-split .pin-btn-left,
+.open-sidebar-hover-plugin .workspace-split.mod-left-split .dock-btn-left {
+  flex-shrink: 0;
+  order: -1;  /* Ensure they stay at the start */
+  margin-right: 4px;  /* Space between buttons and title */
+}
+
+/* === RIGHT SIDEBAR BUTTONS (in container at end) === */
+
+.sidebar-right-icons-container {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;     /* Push to right */
+  margin-right: 4px;     /* Right edge spacing */
+  flex-shrink: 0;        /* Don't shrink */
+  padding-right: 4px;
+  position: relative;
+  z-index: 10;
+  order: 999;            /* Force to end */
+  width: auto;           /* Size to content */
+  min-width: fit-content;
+}
+
+.sidebar-right-icons-container .clickable-icon {
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* Left sidebar button group - for consistency if needed */
+.sidebar-flyover-button-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  /* Removed: margin-right, margin-left, padding-left, order */
+}
+
+/* Use Obsidian's native clickable-icon styling */
+.sidebar-pin-btn,
+.sidebar-dock-btn {
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.sidebar-pin-btn:hover,
+.sidebar-dock-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.sidebar-pin-btn.is-active,
+.sidebar-dock-btn.is-active {
+  color: var(--interactive-accent);
+  background-color: rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+.sidebar-pin-btn:focus,
+.sidebar-dock-btn:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+/* Pinned State */
+.workspace-split.mod-horizontal.mod-left-split.pinned,
+.workspace-split.mod-horizontal.mod-right-split.pinned {
+  /* Ensure it stays expanded if we rely on CSS, but JS handles expanding. */
+}
+
+/* Docked state - sidebar stays expanded and pushes content */
+.workspace-split.mod-left-split.docked {
+  position: relative; /* Not absolute */
+  z-index: auto;     /* Normal z-index */
+}
+
+.workspace-split.mod-right-split.docked {
+  position: relative;
+  z-index: auto;
+}
+
+/* When docked, disable overlay behavior */
+body.sidebar-docked .workspace-split.mod-left-split {
+  position: relative;
+  box-shadow: none;
+}
+
+body.sidebar-docked .workspace-split.mod-right-split {
+  position: relative;
+  box-shadow: none;
+}
+
+/* Prevent collapse when docked */
+.workspace-split.docked.is-collapsed {
+  min-width: var(--sidebar-min-width, 200px);
+}
+
+/* Dynamic Width */
+.workspace-split.mod-horizontal.mod-left-split.dynamic-width,
+.workspace-split.mod-horizontal.mod-right-split.dynamic-width {
+  width: auto;
+}
+
+/* Transition for main content margin when pegged */
+body {
+    transition: margin-left var(--sidebar-expand-collapse-speed) ease,
+                margin-right var(--sidebar-expand-collapse-speed) ease;
+}
+
+/* Diagnostic: Show z-index values */
+.sidebar-overlay-mode .workspace-split.mod-horizontal.mod-right-split {
+  z-index: 25; /* Explicitly higher than sidedock layer */
+}
+
+.open-sidebar-hover-plugin .menu {
+  z-index: 30; /* Menu should be above sidebars */
+}
+
+.workspace-ribbon {
+  z-index: 10; /* Ribbon below sidebars */
+}
