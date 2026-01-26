@@ -1,90 +1,82 @@
-# Obsidian Sample Plugin
+# Sidebar Flyover Plus
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+**Sidebar Flyover Plus** is an Obsidian plugin that supercharges your sidebar experience. It allows sidebars to expand automatically on hover, pin them open when needed, and dock them to push content aside—all with smooth animations and deep customization.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+- **Hover Expansion**: Automatically expand the left or right sidebar when your mouse approaches the screen edge.
+- **Overlay Mode**: By default, sidebars float *over* your content, preserving your layout.
+- **Pinning**: Keep a sidebar permanently open with the "Pin" button.
+- **Docking (Pegging)**: "Peg" a sidebar to disable overlay mode for that side, forcing it to push your content aside (standard split behavior) while keeping it expanded.
+- **Dynamic Width**: Optionally allow sidebars to automatically resize based on their content width.
+- **Sync Sidebars**: Option to expand both sidebars simultaneously when either is triggered.
+- **Customizable**: extensive settings for timing, triggers, widths, and animation speeds.
 
-## First time developing plugins?
+## Usage
 
-Quick starting guide for new plugin devs:
+### Hovering
+Move your mouse cursor to the far left or right edge of the Obsidian window. The respective sidebar will slide out. Move your mouse away, and it will slide back (collapse) after a short delay.
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+### Interface Buttons
+The plugin adds two buttons to the top of each sidebar (in the tab header area):
 
-## Releasing new releases
+1.  **Pin Icon** (📌):
+    -   Click to **Pin** the sidebar.
+    -   When pinned, the sidebar stays open and won't auto-collapse.
+    -   Click again to unpin and resume hover behavior.
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+2.  **Square/Dock Icon** (🔳):
+    -   Click to **Dock** (or "Peg") the sidebar.
+    -   This switches the sidebar from "Overlay" mode to "Push" mode.
+    -   The sidebar will stay expanded and shift your main note content to the side.
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+### Settings
 
-## Adding your plugin to the community plugin list
+You can fine-tune the plugin in **Settings > Sidebar Flyover Plus**:
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+#### General
+-   **Enable Left/Right Sidebar Hover**: Toggle functionality for each side.
+-   **Sync Left & Right**: If enabled, triggering one sidebar opens both.
+-   **Overlay Mode**: Global toggle for whether sidebars float over content (default) or push it.
 
-## How to use
+#### Behavior
+-   **Trigger Area (px)**: How close (in pixels) the mouse must be to the edge to trigger expansion.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+#### Timing
+-   **Expand Delay**: How long to hover before the sidebar opens (prevents accidental triggers).
+-   **Collapse Delay**: How long the sidebar waits to close after you leave it.
+-   **Animation Speed**: Speed of the slide animation.
 
-## Manually installing the plugin
+#### Appearance & Dimensions
+-   **Max Width**: Set the maximum width for expanded sidebars.
+-   **Dynamic Width**: Enable auto-resizing based on sidebar content (experimental).
+-   **Min Width**: Minimum width when using dynamic sizing.
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Commands
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+The plugin provides several commands accessible via the Command Palette (`Ctrl/Cmd + P`):
 
-## Funding URL
+-   `Toggle Left Sidebar Pin`
+-   `Toggle Right Sidebar Pin`
+-   `Toggle Left Sidebar Dock`
+-   `Toggle Right Sidebar Dock`
+-   `Expand Left Sidebar` / `Collapse Left Sidebar`
+-   `Expand Right Sidebar` / `Collapse Right Sidebar`
+-   `Expand Both Sidebars` / `Collapse Both Sidebars`
 
-You can include funding URLs where people who use your plugin can financially support it.
+## Installation
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+1.  Download the latest release (`main.js`, `styles.css`, `manifest.json`) from the GitHub Releases page.
+2.  Create a folder named `sidebar-flyover-plus` in your vault's plugin folder: `.obsidian/plugins/sidebar-flyover-plus`.
+3.  Place the downloaded files into that folder.
+4.  Reload Obsidian.
+5.  Enable "Sidebar Flyover Plus" in **Settings > Community Plugins**.
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+## Support
 
-If you have multiple URLs, you can also do:
+If you find this plugin useful, consider supporting the development!
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+https://obsidian.md/pricing
 
-## API Documentation
-
-See https://docs.obsidian.md
+---
+*Created by Jules*
