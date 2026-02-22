@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, WorkspaceSidedock, setIcon } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, WorkspaceSidedock, setIcon, Menu } from 'obsidian';
 import { SidebarHoverSettings, DEFAULT_SETTINGS, SidebarFlyoverSettingTab } from './settings';
 
 export default class SidebarFlyoverPlus extends Plugin {
@@ -64,11 +64,35 @@ export default class SidebarFlyoverPlus extends Plugin {
             // Apply initial Peg state
             this.updatePegState();
 
+            // Initial Dropdown Setup
+            this.toggleRightSidebarDropdown(this.settings.enableRightSidebarDropdown);
+
             // Re-check buttons periodically to ensure they persist
             // when other plugins manipulate the sidebar
             this.checkButtonsInterval = setInterval(() => {
                 this.ensureButtonsPersist();
+                // Ensure dropdowns persist if enabled
+                if (this.settings.enableRightSidebarDropdown) {
+                    this.injectDropdowns();
+                }
             }, 2000); // Check every 2 seconds
+
+            // Dropdown Events
+            this.registerEvent(
+                this.app.workspace.on('layout-change', () => {
+                    if (this.settings.enableRightSidebarDropdown) {
+                        this.injectDropdowns();
+                    }
+                })
+            );
+
+            this.registerEvent(
+                this.app.workspace.on('active-leaf-change', () => {
+                    if (this.settings.enableRightSidebarDropdown) {
+                        this.updateAllDropdownStates();
+                    }
+                })
+            );
 
             // ===== ADD COMMANDS FOR COMMANDER PLUGIN =====
 
@@ -197,6 +221,10 @@ export default class SidebarFlyoverPlus extends Plugin {
 
         document.body.classList.remove('open-sidebar-hover-plugin');
         document.body.classList.remove('sidebar-overlay-mode');
+        document.body.classList.remove('use-right-sidebar-dropdown');
+
+        // Clean up custom elements
+        document.querySelectorAll('.right-sidebar-dropdown-btn').forEach(el => el.remove());
 
         // Clean up interval
         if (this.checkButtonsInterval) {
@@ -489,28 +517,12 @@ export default class SidebarFlyoverPlus extends Plugin {
             const distanceFromRight = viewportWidth - clientX;
             const isNearRight = distanceFromRight <= this.settings.rightSideBarPixelTrigger;
 
-            // DEBUG LOGGING
-            console.log(`
-                Right Sidebar Status:
-                - Collapsed: ${isRightCollapsed}
-                - Mouse X: ${clientX}
-                - Viewport Width: ${viewportWidth}
-                - Distance from right: ${distanceFromRight}
-                - Trigger threshold: ${this.settings.rightSideBarPixelTrigger}
-                - Is near right: ${isNearRight}
-                - Currently hovering: ${this.isHoveringRight}
-                - Overlay mode: ${this.settings.overlayMode}
-                - Right sidebar element exists: ${!!this.rightSplit}
-            `);
-
             // Trigger expansion
             if (isNearRight && isRightCollapsed && !this.isHoveringRight) {
-                console.log("✓ RIGHT SIDEBAR TRIGGERED - Should expand");
                 this.isHoveringRight = true;
 
                 setTimeout(() => {
                     if (this.isHoveringRight && this.rightSplit.collapsed) {
-                        console.log("✓ RIGHT SIDEBAR EXPANDING");
                         if (this.settings.syncLeftRight && this.settings.leftSidebar) {
                             this.expandBoth();
                         } else {
@@ -524,7 +536,6 @@ export default class SidebarFlyoverPlus extends Plugin {
             if (!isNearRight && this.isHoveringRight) {
                 setTimeout(() => {
                     if (!this.isHoveringRight) {
-                        console.log("✓ RIGHT SIDEBAR COLLAPSING");
                         if (this.settings.syncLeftRight && this.settings.leftSidebar) {
                             this.collapseBoth();
                         } else {
@@ -634,17 +645,21 @@ export default class SidebarFlyoverPlus extends Plugin {
         const sidebarLabel = t ? "left" : "right";
         console.log(`Adding buttons to ${sidebarLabel} sidebar`);
 
-        // Step 1: Find the header container where OTHER plugins add their icons
-        const headerContainer = e.containerEl.querySelector(
-            ".workspace-tab-header-container-inner"
-        );
+        let headerContainer: Element | null = null;
+
+        if (t) {
+            // LEFT Sidebar: use the inner container
+            headerContainer = e.containerEl.querySelector(".workspace-tab-header-container-inner");
+        } else {
+            // RIGHT Sidebar: use the outer container because we hide the inner one when dropdown is enabled
+            // and even if disabled, appending to outer is cleaner for avoiding layout issues with tabs
+            headerContainer = e.containerEl.querySelector(".workspace-tab-header-container");
+        }
+
         if (!headerContainer) {
             console.log(`Cannot find header container for ${sidebarLabel} sidebar`);
             return;
         }
-
-        // Step 2: Create INDIVIDUAL clickable icons (like other plugins do)
-        // Don't create a wrapper - just add icons directly to the native container
 
         // Create PIN button
         const pinButton = document.createElement("div");
@@ -654,7 +669,6 @@ export default class SidebarFlyoverPlus extends Plugin {
         pinButton.setAttribute("aria-label", t ? "Pin left sidebar" : "Pin right sidebar");
         pinButton.setAttribute("role", "button");
         pinButton.setAttribute("tabindex", "0");
-        // Removed inline styles - CSS handles sizing
         setIcon(pinButton, "pin");
 
         pinButton.onclick = (event) => {
@@ -695,7 +709,6 @@ export default class SidebarFlyoverPlus extends Plugin {
         pegButton.setAttribute("aria-label", t ? "Dock left sidebar" : "Dock right sidebar");
         pegButton.setAttribute("role", "button");
         pegButton.setAttribute("tabindex", "0");
-        // Removed inline styles - CSS handles sizing
         setIcon(pegButton, "square");
 
         pegButton.onclick = (event) => {
@@ -712,13 +725,8 @@ export default class SidebarFlyoverPlus extends Plugin {
             }
         });
 
-        // Step 3: CRITICAL - Add buttons to DIFFERENT positions based on sidebar
-        // LEFT sidebar: Add buttons to the LEFT (after native icons)
-        // RIGHT sidebar: Add buttons to the RIGHT (as the LAST items)
-
         if (t) {
-            // LEFT SIDEBAR: Insert after any native expand/collapse button
-            // Find and hide the native expand/collapse button
+            // LEFT SIDEBAR
             const nativeCollapseBtn = e.containerEl.querySelector(
                 ".workspace-tab-header-container .clickable-icon"
             );
@@ -728,44 +736,33 @@ export default class SidebarFlyoverPlus extends Plugin {
                 nativeCollapseBtn.setAttribute("inert", "true");
             }
 
-            // Add our buttons FIRST (left side)
             if (headerContainer.firstChild) {
                 headerContainer.insertBefore(pinButton, headerContainer.firstChild);
-                // Insert peg button right after pin button
                 headerContainer.insertBefore(pegButton, pinButton.nextSibling);
             } else {
                 headerContainer.appendChild(pinButton);
                 headerContainer.appendChild(pegButton);
             }
         } else {
-            // RIGHT SIDEBAR: Add buttons to the RIGHTMOST position
-            // These should be at the END of the header container to stay visible
-
-            // First, find and remove any existing button container from right sidebar
+            // RIGHT SIDEBAR
+            // Clean up old buttons first
             const existingGroup = e.containerEl.querySelector(".sidebar-right-icons-container");
             if (existingGroup) {
                 existingGroup.remove();
             }
 
-            // Create a persistent container for right sidebar icons
-            // This container will have special CSS to keep it at the right edge
             const rightIconContainer = document.createElement("div");
             rightIconContainer.addClass("sidebar-right-icons-container");
-            // Removed inline styles - CSS handles layout
 
-            // Append buttons to the right container
             rightIconContainer.appendChild(pinButton);
             rightIconContainer.appendChild(pegButton);
 
-            // Add the container to the header
             headerContainer.appendChild(rightIconContainer);
         }
 
-        // Step 4: Update button states
         this.updatePinState(e, t ? this.settings.leftSidebarPinned : this.settings.rightSidebarPinned, pinButton);
         this.updatePegBtnState(pegButton, t ? this.settings.leftSidebarPegged : this.settings.rightSidebarPegged);
 
-        // Store references to buttons for later updates
         if (t) {
             this.leftPinButton = pinButton;
             this.leftPegButton = pegButton;
@@ -791,9 +788,6 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     updatePegState() {
-        // This method is now simplified - docking is handled in toggleDockState()
-        // This just manages CSS classes for visual feedback
-
         if (this.leftSplit) {
             if (this.settings.leftSidebarPegged && !this.leftSplit.collapsed) {
                 this.leftSplit.containerEl.classList.add('docked');
@@ -816,19 +810,12 @@ export default class SidebarFlyoverPlus extends Plugin {
             this.settings.leftSidebarPegged = !this.settings.leftSidebarPegged;
 
             if (this.settings.leftSidebarPegged) {
-                // DOCK IS NOW ACTIVE
-                // Keep the sidebar expanded and prevent collapse
                 this.expandLeft();
                 this.leftSplit.containerEl.classList.add('docked');
-                // Also ensure it stays in overlay: false mode OR resets to push mode
-                // by NOT using overlay mode for docked sidebars
                 document.body.classList.remove('sidebar-overlay-mode');
             } else {
-                // DOCK IS NOW INACTIVE
-                // Return to normal hover behavior
                 this.leftSplit.containerEl.classList.remove('docked');
                 this.collapseLeft();
-                // Restore overlay mode if it was enabled
                 if (this.settings.overlayMode) {
                     document.body.classList.add('sidebar-overlay-mode');
                 }
@@ -853,13 +840,8 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     setupDynamicWidth() {
-        // Implement ResizeObserver
         this.leftResizeObserver = new ResizeObserver(entries => {
             if (this.settings.leftSidebarDynamicWidth && this.leftSplit && !this.leftSplit.collapsed) {
-                // Debounce? Prompt says debounce.
-                // For simplicity, I'll just call logic directly or use a small timeout if needed.
-                // But ResizeObserver loop limit might be hit.
-                // Let's rely on standard debouncing.
                 this.debouncedDynamicUpdate(true);
             }
         });
@@ -870,18 +852,7 @@ export default class SidebarFlyoverPlus extends Plugin {
             }
         });
 
-        // Observe content containers
         if (this.leftSplit) {
-            const content = this.leftSplit.containerEl.querySelector('.workspace-leaf-content'); // This might be too deep.
-            // Usually we observe the container or the children.
-            // "Measure scrollWidth of content" -> "ResizeObserver on the sidebar's inner content container"
-            // .workspace-sidedock-content is likely what we want.
-            // But let's find .workspace-leaf or similar.
-            // .workspace-split > .workspace-tabs > ...
-            // Let's observe the split container itself to trigger updates, or better, the content.
-            // I'll observe the split container for now, but really we want to know when content changes.
-            // Actually, if content grows, we want to expand.
-            // Let's try to observe the immediate child of the split container.
              const child = this.leftSplit.containerEl.firstElementChild;
              if (child) this.leftResizeObserver.observe(child);
         }
@@ -892,7 +863,6 @@ export default class SidebarFlyoverPlus extends Plugin {
         }
     }
 
-    // Simple debounce
     leftDebounceTimer: any = null;
     rightDebounceTimer: any = null;
 
@@ -914,12 +884,7 @@ export default class SidebarFlyoverPlus extends Plugin {
 
     calculateDynamicWidth(split: any, isLeft: boolean): number {
         if (!split || !split.containerEl) return isLeft ? this.settings.leftSidebarMaxWidth : this.settings.rightSidebarMaxWidth;
-
-        // Find content to measure
-        // We want the width of the content inside.
-        // Sidebars usually contain a tab container.
         const content = split.containerEl.querySelector('.workspace-tab-container') || split.containerEl.querySelector('.workspace-leaf');
-
         if (!content) return isLeft ? this.settings.leftSidebarMaxWidth : this.settings.rightSidebarMaxWidth;
 
         const scrollWidth = content.scrollWidth;
@@ -930,7 +895,6 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     ensureButtonsPersist() {
-        // Check left sidebar buttons
         const leftPinMissing = !this.leftSplit?.containerEl?.querySelector(".pin-btn-left");
         const leftPegMissing = !this.leftSplit?.containerEl?.querySelector(".dock-btn-left");
 
@@ -939,7 +903,6 @@ export default class SidebarFlyoverPlus extends Plugin {
             this.addSidebarButtons(this.leftSplit, true);
         }
 
-        // Check right sidebar buttons
         const rightPinMissing = !this.rightSplit?.containerEl?.querySelector(".pin-btn-right");
         const rightPegMissing = !this.rightSplit?.containerEl?.querySelector(".dock-btn-right");
 
@@ -947,5 +910,111 @@ export default class SidebarFlyoverPlus extends Plugin {
             console.log("Right sidebar buttons missing - re-adding...");
             this.addSidebarButtons(this.rightSplit, false);
         }
+    }
+
+    // --- Dropdown Feature ---
+
+    toggleRightSidebarDropdown(enable: boolean) {
+        if (enable) {
+            document.body.classList.add('use-right-sidebar-dropdown');
+            this.injectDropdowns();
+        } else {
+            document.body.classList.remove('use-right-sidebar-dropdown');
+            document.querySelectorAll('.right-sidebar-dropdown-btn').forEach(el => el.remove());
+        }
+    }
+
+    injectDropdowns() {
+        if (!this.settings.enableRightSidebarDropdown) return;
+
+        // Target all tab containers inside the right sidebar
+        const rightContainers = document.querySelectorAll('.workspace-split.mod-right-split .workspace-tab-header-container');
+
+        rightContainers.forEach(container => {
+            // Prevent duplicate injections
+            if (container.querySelector('.right-sidebar-dropdown-btn')) {
+                this.updateDropdownState(container);
+                return;
+            }
+
+            const btn = document.createElement('div');
+            btn.className = 'right-sidebar-dropdown-btn';
+
+            const iconEl = document.createElement('div');
+            iconEl.className = 'dropdown-active-icon';
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'dropdown-active-title';
+
+            const chevronEl = document.createElement('div');
+            chevronEl.className = 'dropdown-chevron';
+            setIcon(chevronEl, 'chevron-down');
+
+            btn.appendChild(iconEl);
+            btn.appendChild(titleEl);
+            btn.appendChild(chevronEl);
+
+            btn.addEventListener('click', (evt) => {
+                this.showMenu(evt, container);
+            });
+
+            // Prepend so it sits nicely if there are native UI action buttons on the right
+            container.insertBefore(btn, container.firstChild);
+            this.updateDropdownState(container);
+        });
+    }
+
+    updateAllDropdownStates() {
+        const rightContainers = document.querySelectorAll('.workspace-split.mod-right-split .workspace-tab-header-container');
+        rightContainers.forEach(container => this.updateDropdownState(container));
+    }
+
+    updateDropdownState(container: Element) {
+        const btn = container.querySelector('.right-sidebar-dropdown-btn');
+        const activeTab = container.querySelector('.workspace-tab-header.is-active');
+
+        if (!btn || !activeTab) return;
+
+        const title = activeTab.getAttribute('aria-label') || 'Select Application';
+        const sourceIcon = activeTab.querySelector('.workspace-tab-header-inner-icon');
+
+        const targetIconEl = btn.querySelector('.dropdown-active-icon');
+        const targetTitleEl = btn.querySelector('.dropdown-active-title');
+
+        if (targetTitleEl) targetTitleEl.textContent = title;
+        if (targetIconEl && sourceIcon) {
+            targetIconEl.innerHTML = sourceIcon.innerHTML;
+        }
+    }
+
+    showMenu(evt: MouseEvent, container: Element) {
+        const menu = new Menu();
+
+        // Grab all native hidden tab headers to build the dropdown list
+        // Note: The native headers are in .workspace-tab-header-container-inner
+        // But we can just query .workspace-tab-header inside the main container
+        const tabHeaders = container.querySelectorAll('.workspace-tab-header');
+
+        tabHeaders.forEach((header: HTMLElement) => {
+            const title = header.getAttribute('aria-label') || header.innerText || 'Tab';
+            const dataType = header.getAttribute('data-type');
+            const isActive = header.classList.contains('is-active');
+
+            menu.addItem((item) => {
+                item.setTitle(title);
+                item.setChecked(isActive);
+
+                if (dataType) {
+                    item.setIcon(dataType);
+                }
+
+                item.onClick(() => {
+                    // Trigger the native click to switch tabs safely
+                    header.click();
+                });
+            });
+        });
+
+        menu.showAtMouseEvent(evt);
     }
 }

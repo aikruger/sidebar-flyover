@@ -258,3 +258,59 @@ body {
 .workspace-ribbon {
   z-index: 10; /* Ribbon below sidebars */
 }
+
+/* Hide native horizontal tab scroll row strictly in the right sidebar WHEN enabled */
+body.use-right-sidebar-dropdown .workspace-split.mod-right-split .workspace-tab-header-container-inner {
+    display: none !important;
+}
+
+/* Ensure the container is flex so dropdown and other buttons align */
+.workspace-split.mod-right-split .workspace-tab-header-container {
+    display: flex !important;
+    align-items: center;
+    flex-direction: row;
+}
+
+/* Style the custom dropdown trigger */
+.right-sidebar-dropdown-btn {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-normal);
+    background-color: transparent;
+    user-select: none;
+    transition: background-color 0.15s ease;
+}
+
+.right-sidebar-dropdown-btn:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dropdown-active-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    color: var(--icon-color);
+}
+
+.dropdown-active-title {
+    flex-grow: 1;
+    font-weight: 600;
+    font-size: var(--font-ui-small);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.dropdown-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
