@@ -1,3 +1,47 @@
+/* CRITICAL: Force menu above everything */
+.menu,
+div.menu {
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+}
+
+/* Ensure dropdown button is clickable */
+.right-sidebar-dropdown-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative;
+    z-index: 10;
+}
+
+/* Prevent sidebar overlay mode from blocking menu interaction */
+body.sidebar-overlay-mode .workspace-split.mod-right-split {
+    /* intentionally left to avoid pointer-events none */
+}
+
+/* When dropdown is enabled, ensure right sidebar respects pointer events */
+body.use-right-sidebar-dropdown .workspace-split.mod-right-split .workspace-tab-header-container {
+    pointer-events: auto !important;
+}
+
+/* CRITICAL: Ensure menu is ALWAYS on top and clickable */
+.menu,
+div.menu,
+.menu * {
+  pointer-events: auto !important;
+}
+
+.menu {
+  z-index: 999999 !important;
+  position: fixed !important;
+}
+
+/* Ensure dropdown button itself is clickable */
+.right-sidebar-dropdown-btn,
+.right-sidebar-dropdown-btn * {
+  pointer-events: auto !important;
+}
+
 :root {
   --sidebar-expand-collapse-speed: 370ms;
   --sidebar-expand-delay: 200ms;
@@ -257,4 +301,66 @@ body {
 
 .workspace-ribbon {
   z-index: 10; /* Ribbon below sidebars */
+}
+
+/* Hide native horizontal tab scroll row strictly in the right sidebar WHEN enabled */
+body.use-right-sidebar-dropdown .workspace-split.mod-right-split .workspace-tab-header-container-inner {
+    display: none !important;
+}
+
+/* Ensure the container is flex so dropdown and other buttons align */
+.workspace-split.mod-right-split .workspace-tab-header-container {
+    display: flex !important;
+    align-items: center;
+    flex-direction: row;
+    min-height: 32px;
+    height: 32px;
+}
+
+/* Style the custom dropdown trigger */
+.right-sidebar-dropdown-btn {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+	height: 32px;
+	min-height: 32px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-normal);
+    background-color: transparent;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    pointer-events: auto;
+	position: relative;
+	z-index: 5;
+}
+
+.right-sidebar-dropdown-btn:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dropdown-active-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    color: var(--icon-color);
+}
+
+.dropdown-active-title {
+    flex-grow: 1;
+    font-weight: 600;
+    font-size: var(--font-ui-small);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.dropdown-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
 }

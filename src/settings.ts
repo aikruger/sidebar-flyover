@@ -34,6 +34,9 @@ export interface SidebarHoverSettings {
     rightSidebarDynamicWidth: boolean;
     leftSidebarMinWidth: number;
     rightSidebarMinWidth: number;
+
+    // Feature: Right Sidebar Dropdown
+    enableRightSidebarDropdown: boolean;
 }
 
 export const DEFAULT_SETTINGS: SidebarHoverSettings = {
@@ -56,6 +59,7 @@ export const DEFAULT_SETTINGS: SidebarHoverSettings = {
     rightSidebarDynamicWidth: false,
     leftSidebarMinWidth: 200,
     rightSidebarMinWidth: 200,
+    enableRightSidebarDropdown: true,
 };
 
 export class SidebarFlyoverSettingTab extends PluginSettingTab {
@@ -307,6 +311,23 @@ export class SidebarFlyoverSettingTab extends PluginSettingTab {
                     if (!isNaN(num) && num >= 100) {
                         this.plugin.settings.rightSidebarMinWidth = num;
                         await this.plugin.saveSettings();
+                    }
+                }));
+
+        // Right Sidebar Dropdown
+        containerEl.createEl('h3', { text: 'Right Sidebar Dropdown' });
+
+        new Setting(containerEl)
+            .setName('Enable Dropdown Menu')
+            .setDesc('Replace native tab headers with a dropdown menu in the right sidebar.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableRightSidebarDropdown)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableRightSidebarDropdown = value;
+                    await this.plugin.saveSettings();
+                    // Trigger update
+                    if (this.plugin.toggleRightSidebarDropdown) {
+                        this.plugin.toggleRightSidebarDropdown(value);
                     }
                 }));
     }
