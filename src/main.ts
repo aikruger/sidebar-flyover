@@ -9,6 +9,7 @@ export default class SidebarFlyoverPlus extends Plugin {
     isHoveringLeft: boolean = false;
     isHoveringRight: boolean = false;
 	private isMenuOpen = false;
+    private isInjectingDropdowns = false;
 
     // Handler function references
     documentClickHandler: (e: MouseEvent) => void;
@@ -965,6 +966,14 @@ export default class SidebarFlyoverPlus extends Plugin {
     injectDropdowns() {
         if (!this.settings.enableRightSidebarDropdown) return;
 
+        // GUARD: Prevent re-entry during injection
+        if (this.isInjectingDropdowns) {
+            console.log('🛑 INJECT: Already injecting, skipping...');
+            return;
+        }
+
+        this.isInjectingDropdowns = true;
+
         const rightContainers = document.querySelectorAll(
             '.workspace-split.mod-right-split .workspace-tab-header-container'
         );
@@ -973,17 +982,14 @@ export default class SidebarFlyoverPlus extends Plugin {
 
         rightContainers.forEach((container) => {
             // Check if button already exists
-            let btn = container.querySelector('.right-sidebar-dropdown-btn') as HTMLElement | null;
+            let btn = container.querySelector('.right-sidebar-dropdown-btn') as HTMLElement;
 
             if (btn) {
-                console.log('🔧 INJECT: Button already exists, re-attaching handler');
-
-                // Remove old button to ensure clean state
-                btn.remove();
-                btn = null;
+                console.log('🔧 INJECT: Button already exists, skipping re-creation');
+                return; // Don't recreate if it already exists
             }
 
-            // Always create fresh button with handler
+            // Create fresh button with handler
             btn = document.createElement('div');
             btn.className = 'right-sidebar-dropdown-btn';
 
@@ -1003,19 +1009,36 @@ export default class SidebarFlyoverPlus extends Plugin {
 
             console.log('🔧 INJECT: Created dropdown button, adding click handler');
 
-            // Attach handler
+            // Attach handler with triple redundancy
             btn.addEventListener('click', (evt) => {
                 console.log('🖱️ BUTTON CLICKED!');
+                evt.stopPropagation();
+                evt.preventDefault();
                 this.showMenu(evt, container);
-            });
+            }, true);
+
+            // Fallback onclick
+            (btn as any).onclick = (evt: MouseEvent) => {
+                console.log('🖱️ BUTTON CLICKED (onclick)!');
+                evt.stopPropagation();
+                evt.preventDefault();
+                this.showMenu(evt, container);
+            };
 
             console.log('🔧 INJECT: Button click handler registered');
 
-            container.insertBefore(btn, container.firstChild);
+            // Insert at the END so it renders on top
+            container.appendChild(btn);
+
             console.log('🔧 INJECT: Button added to container');
 
             this.updateDropdownState(container);
         });
+
+        // Clear guard after a delay to allow DOM to settle
+        setTimeout(() => {
+            this.isInjectingDropdowns = false;
+        }, 100);
     }
 
     updateAllDropdownStates() {
