@@ -1,3 +1,34 @@
+/* CRITICAL: Ensure dropdown button is above EVERYTHING in the header */
+.right-sidebar-dropdown-btn {
+    z-index: 1000 !important;
+    position: relative !important;
+    pointer-events: auto !important;
+}
+
+/* Force pin/peg container below dropdown */
+.sidebar-right-icons-container {
+    z-index: 5 !important;
+}
+
+/* Ensure no child elements block the dropdown */
+.workspace-tab-header-container > * {
+    pointer-events: auto !important;
+}
+
+.workspace-tab-header-container {
+    isolation: isolate; /* Creates new stacking context */
+}
+
+/* Let clicks pass through the icon container to dropdown below */
+.workspace-split.mod-right-split .sidebar-right-icons-container {
+    pointer-events: none !important;
+}
+
+/* But enable on the actual buttons */
+.sidebar-right-icons-container .clickable-icon {
+    pointer-events: auto !important;
+}
+
 /* CRITICAL: Fix dropdown button click interception */
 .right-sidebar-dropdown-btn {
     z-index: 10000 !important;
