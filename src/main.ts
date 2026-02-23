@@ -965,11 +965,13 @@ export default class SidebarFlyoverPlus extends Plugin {
     injectDropdowns() {
         if (!this.settings.enableRightSidebarDropdown) return;
 
-        // Target all tab containers inside the right sidebar
-        const rightContainers = document.querySelectorAll('.workspace-split.mod-right-split .workspace-tab-header-container');
+        const rightContainers = document.querySelectorAll(
+            '.workspace-split.mod-right-split .workspace-tab-header-container'
+        );
 
-        rightContainers.forEach(container => {
-            // Prevent duplicate injections
+        console.log('🔧 INJECT: Found', rightContainers.length, 'right sidebar containers');
+
+        rightContainers.forEach((container) => {
             if (container.querySelector('.right-sidebar-dropdown-btn')) {
                 this.updateDropdownState(container);
                 return;
@@ -992,12 +994,20 @@ export default class SidebarFlyoverPlus extends Plugin {
             btn.appendChild(titleEl);
             btn.appendChild(chevronEl);
 
+            // ADD LOGGING HERE
+            console.log('🔧 INJECT: Created dropdown button, adding click handler');
+
             btn.addEventListener('click', (evt) => {
+                console.log('🖱️ BUTTON CLICKED!');
                 this.showMenu(evt, container);
             });
 
-            // Prepend so it sits nicely if there are native UI action buttons on the right
+            // Verify handler was added
+            console.log('🔧 INJECT: Button click handler registered');
+
             container.insertBefore(btn, container.firstChild);
+            console.log('🔧 INJECT: Button added to container');
+
             this.updateDropdownState(container);
         });
     }

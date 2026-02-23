@@ -1,3 +1,22 @@
+/* NUCLEAR OPTION: Force dropdown button to be clickable */
+.right-sidebar-dropdown-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+
+/* Ensure nothing overlays the button */
+.workspace-split.mod-right-split .workspace-tab-header-container {
+    position: relative;
+    z-index: 50;
+}
+
+/* Ensure all children of dropdown button are clickable */
+.right-sidebar-dropdown-btn * {
+    pointer-events: auto !important;
+}
+
 /* CRITICAL: Force menu above everything */
 .menu,
 div.menu {
