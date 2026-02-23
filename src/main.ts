@@ -972,12 +972,19 @@ export default class SidebarFlyoverPlus extends Plugin {
         console.log('🔧 INJECT: Found', rightContainers.length, 'right sidebar containers');
 
         rightContainers.forEach((container) => {
-            if (container.querySelector('.right-sidebar-dropdown-btn')) {
-                this.updateDropdownState(container);
-                return;
+            // Check if button already exists
+            let btn = container.querySelector('.right-sidebar-dropdown-btn') as HTMLElement | null;
+
+            if (btn) {
+                console.log('🔧 INJECT: Button already exists, re-attaching handler');
+
+                // Remove old button to ensure clean state
+                btn.remove();
+                btn = null;
             }
 
-            const btn = document.createElement('div');
+            // Always create fresh button with handler
+            btn = document.createElement('div');
             btn.className = 'right-sidebar-dropdown-btn';
 
             const iconEl = document.createElement('div');
@@ -994,15 +1001,14 @@ export default class SidebarFlyoverPlus extends Plugin {
             btn.appendChild(titleEl);
             btn.appendChild(chevronEl);
 
-            // ADD LOGGING HERE
             console.log('🔧 INJECT: Created dropdown button, adding click handler');
 
+            // Attach handler
             btn.addEventListener('click', (evt) => {
                 console.log('🖱️ BUTTON CLICKED!');
                 this.showMenu(evt, container);
             });
 
-            // Verify handler was added
             console.log('🔧 INJECT: Button click handler registered');
 
             container.insertBefore(btn, container.firstChild);
