@@ -37,6 +37,9 @@ export interface SidebarHoverSettings {
 
     // Feature: Right Sidebar Dropdown
     enableRightSidebarDropdown: boolean;
+
+    // Feature: Ctrl to Activate
+    requireCtrlToActivate: boolean;
 }
 
 export const DEFAULT_SETTINGS: SidebarHoverSettings = {
@@ -60,6 +63,7 @@ export const DEFAULT_SETTINGS: SidebarHoverSettings = {
     leftSidebarMinWidth: 200,
     rightSidebarMinWidth: 200,
     enableRightSidebarDropdown: true,
+    requireCtrlToActivate: false,
 };
 
 export class SidebarFlyoverSettingTab extends PluginSettingTab {
@@ -123,6 +127,19 @@ export class SidebarFlyoverSettingTab extends PluginSettingTab {
 
         // Behavior Section
         containerEl.createEl('h3', { text: 'Behavior' });
+
+        new Setting(containerEl)
+            .setName('Require Ctrl to Activate')
+            .setDesc(
+                'When enabled, sidebars will only fly out when you hold the Ctrl key ' +
+                'while moving the mouse to the screen edge. Useful for accidental activation.'
+            )
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.requireCtrlToActivate)
+                .onChange(async (value) => {
+                    this.plugin.settings.requireCtrlToActivate = value;
+                    await this.plugin.saveSettings();
+                }));
 
         new Setting(containerEl)
             .setName('Left Sidebar Trigger Area (px)')

@@ -13,6 +13,7 @@ export default class SidebarFlyoverPlus extends Plugin {
     // Handler function references
     documentClickHandler: (e: MouseEvent) => void;
     mouseMoveHandler: (e: MouseEvent) => void;
+    keyUpHandler: (e: KeyboardEvent) => void;
 
     // Sidebar Event Handlers
     leftSplitMouseEnterHandler: (e: MouseEvent) => void;
@@ -432,9 +433,11 @@ export default class SidebarFlyoverPlus extends Plugin {
         // Global Handlers
         this.mouseMoveHandler = this.onMouseMove.bind(this);
         this.documentClickHandler = this.onDocumentClick.bind(this);
+        this.keyUpHandler = this.onKeyUp.bind(this);
 
         document.addEventListener('mousemove', this.mouseMoveHandler);
         document.addEventListener('click', this.documentClickHandler);
+        document.addEventListener('keyup', this.keyUpHandler);
 
         // Sidebar Handlers
         this.bindSidebarHandlers();
@@ -490,6 +493,7 @@ export default class SidebarFlyoverPlus extends Plugin {
     removeHandlers() {
         document.removeEventListener('mousemove', this.mouseMoveHandler);
         document.removeEventListener('click', this.documentClickHandler);
+        document.removeEventListener('keyup', this.keyUpHandler);
 
         if (this.leftSplit && this.leftSplit.containerEl) {
             this.leftSplit.containerEl.removeEventListener('mouseenter', this.leftSplitMouseEnterHandler);
@@ -508,9 +512,49 @@ export default class SidebarFlyoverPlus extends Plugin {
         }
     }
 
+    onKeyUp(e: KeyboardEvent) {
+        // If Ctrl was released while sidebars are hovering, collapse them
+        if (e.key === 'Control' && this.settings.requireCtrlToActivate) {
+            if (this.isHoveringLeft) {
+                this.isHoveringLeft = false;
+                setTimeout(() => {
+                    if (!this.isHoveringLeft) this.collapseLeft();
+                }, this.settings.sidebarDelay);
+            }
+            if (this.isHoveringRight) {
+                this.isHoveringRight = false;
+                setTimeout(() => {
+                    if (!this.isHoveringRight) this.collapseRight();
+                }, this.settings.sidebarDelay);
+            }
+        }
+    }
+
     onMouseMove(e: MouseEvent) {
         const clientX = e.clientX;
         const viewportWidth = document.body.clientWidth;
+
+        // If Ctrl-to-activate is enabled, only proceed when Ctrl key is held
+        const ctrlRequired = this.settings.requireCtrlToActivate;
+        const ctrlHeld = e.ctrlKey;
+
+        if (ctrlRequired && !ctrlHeld) {
+            // Ctrl is required but not held — do NOT trigger expansion.
+            // Also cancel any pending hover states so releasing Ctrl collapses.
+            if (this.isHoveringLeft) {
+                this.isHoveringLeft = false;
+                setTimeout(() => {
+                    if (!this.isHoveringLeft) this.collapseLeft();
+                }, this.settings.sidebarDelay);
+            }
+            if (this.isHoveringRight) {
+                this.isHoveringRight = false;
+                setTimeout(() => {
+                    if (!this.isHoveringRight) this.collapseRight();
+                }, this.settings.sidebarDelay);
+            }
+            return;
+        }
 
         // RIGHT SIDEBAR DEBUG
         if (this.settings.rightSidebar && this.rightSplit) {
@@ -625,6 +669,9 @@ export default class SidebarFlyoverPlus extends Plugin {
 	}
 
     onRibbonMouseEnter(e: MouseEvent) {
+        // Respect Ctrl-to-activate setting
+        if (this.settings.requireCtrlToActivate && !e.ctrlKey) return;
+
         this.isHoveringLeft = true;
         setTimeout(() => {
             if (this.isHoveringLeft) {
