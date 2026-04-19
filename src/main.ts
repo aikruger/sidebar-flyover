@@ -513,21 +513,7 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     onKeyUp(e: KeyboardEvent) {
-        // If modifier key was released while sidebars are hovering, collapse them
-        if (e.key === this.settings.modifierKey && this.settings.requireModifierKeyToActivate) {
-            if (this.isHoveringLeft) {
-                this.isHoveringLeft = false;
-                setTimeout(() => {
-                    if (!this.isHoveringLeft) this.collapseLeft();
-                }, this.settings.sidebarDelay);
-            }
-            if (this.isHoveringRight) {
-                this.isHoveringRight = false;
-                setTimeout(() => {
-                    if (!this.isHoveringRight) this.collapseRight();
-                }, this.settings.sidebarDelay);
-            }
-        }
+        // No longer collapse on key up, modifier is only needed to activate
     }
 
     checkModifierKey(e: MouseEvent): boolean {
@@ -548,24 +534,6 @@ export default class SidebarFlyoverPlus extends Plugin {
         const modRequired = this.settings.requireModifierKeyToActivate;
         const modHeld = this.checkModifierKey(e);
 
-        if (modRequired && !modHeld) {
-            // Modifier is required but not held — do NOT trigger expansion.
-            // Also cancel any pending hover states so releasing Modifier collapses.
-            if (this.isHoveringLeft) {
-                this.isHoveringLeft = false;
-                setTimeout(() => {
-                    if (!this.isHoveringLeft) this.collapseLeft();
-                }, this.settings.sidebarDelay);
-            }
-            if (this.isHoveringRight) {
-                this.isHoveringRight = false;
-                setTimeout(() => {
-                    if (!this.isHoveringRight) this.collapseRight();
-                }, this.settings.sidebarDelay);
-            }
-            return;
-        }
-
         // RIGHT SIDEBAR DEBUG
         if (this.settings.rightSidebar && this.rightSplit) {
             const isRightCollapsed = this.rightSplit.collapsed === true;
@@ -573,7 +541,7 @@ export default class SidebarFlyoverPlus extends Plugin {
             const isNearRight = distanceFromRight <= this.settings.rightSideBarPixelTrigger;
 
             // Trigger expansion
-            if (isNearRight && isRightCollapsed && !this.isHoveringRight) {
+            if (isNearRight && isRightCollapsed && !this.isHoveringRight && (!modRequired || modHeld)) {
                 this.isHoveringRight = true;
 
                 setTimeout(() => {
@@ -606,7 +574,7 @@ export default class SidebarFlyoverPlus extends Plugin {
             const isLeftCollapsed = this.leftSplit.collapsed === true;
             const isNearLeft = clientX <= this.settings.leftSideBarPixelTrigger;
 
-            if (isNearLeft && isLeftCollapsed && !this.isHoveringLeft) {
+            if (isNearLeft && isLeftCollapsed && !this.isHoveringLeft && (!modRequired || modHeld)) {
                 this.isHoveringLeft = true;
 
                 setTimeout(() => {
