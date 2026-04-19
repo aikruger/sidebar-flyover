@@ -513,8 +513,8 @@ export default class SidebarFlyoverPlus extends Plugin {
     }
 
     onKeyUp(e: KeyboardEvent) {
-        // If Ctrl was released while sidebars are hovering, collapse them
-        if (e.key === 'Control' && this.settings.requireCtrlToActivate) {
+        // If modifier key was released while sidebars are hovering, collapse them
+        if (e.key === this.settings.modifierKey && this.settings.requireModifierKeyToActivate) {
             if (this.isHoveringLeft) {
                 this.isHoveringLeft = false;
                 setTimeout(() => {
@@ -530,17 +530,27 @@ export default class SidebarFlyoverPlus extends Plugin {
         }
     }
 
+    checkModifierKey(e: MouseEvent): boolean {
+        switch (this.settings.modifierKey) {
+            case 'Control': return e.ctrlKey;
+            case 'Alt': return e.altKey;
+            case 'Shift': return e.shiftKey;
+            case 'Meta': return e.metaKey;
+            default: return e.ctrlKey;
+        }
+    }
+
     onMouseMove(e: MouseEvent) {
         const clientX = e.clientX;
         const viewportWidth = document.body.clientWidth;
 
-        // If Ctrl-to-activate is enabled, only proceed when Ctrl key is held
-        const ctrlRequired = this.settings.requireCtrlToActivate;
-        const ctrlHeld = e.ctrlKey;
+        // If Modifier-to-activate is enabled, only proceed when selected modifier key is held
+        const modRequired = this.settings.requireModifierKeyToActivate;
+        const modHeld = this.checkModifierKey(e);
 
-        if (ctrlRequired && !ctrlHeld) {
-            // Ctrl is required but not held — do NOT trigger expansion.
-            // Also cancel any pending hover states so releasing Ctrl collapses.
+        if (modRequired && !modHeld) {
+            // Modifier is required but not held — do NOT trigger expansion.
+            // Also cancel any pending hover states so releasing Modifier collapses.
             if (this.isHoveringLeft) {
                 this.isHoveringLeft = false;
                 setTimeout(() => {
@@ -669,8 +679,8 @@ export default class SidebarFlyoverPlus extends Plugin {
 	}
 
     onRibbonMouseEnter(e: MouseEvent) {
-        // Respect Ctrl-to-activate setting
-        if (this.settings.requireCtrlToActivate && !e.ctrlKey) return;
+        // Respect Modifier-to-activate setting
+        if (this.settings.requireModifierKeyToActivate && !this.checkModifierKey(e)) return;
 
         this.isHoveringLeft = true;
         setTimeout(() => {
