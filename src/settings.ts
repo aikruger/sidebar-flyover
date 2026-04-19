@@ -38,8 +38,9 @@ export interface SidebarHoverSettings {
     // Feature: Right Sidebar Dropdown
     enableRightSidebarDropdown: boolean;
 
-    // Feature: Ctrl to Activate
-    requireCtrlToActivate: boolean;
+    // Feature: Modifier Key to Activate
+    requireModifierKeyToActivate: boolean;
+    modifierKey: string;
 }
 
 export const DEFAULT_SETTINGS: SidebarHoverSettings = {
@@ -63,7 +64,8 @@ export const DEFAULT_SETTINGS: SidebarHoverSettings = {
     leftSidebarMinWidth: 200,
     rightSidebarMinWidth: 200,
     enableRightSidebarDropdown: true,
-    requireCtrlToActivate: false,
+    requireModifierKeyToActivate: false,
+    modifierKey: 'Control',
 };
 
 export class SidebarFlyoverSettingTab extends PluginSettingTab {
@@ -129,15 +131,29 @@ export class SidebarFlyoverSettingTab extends PluginSettingTab {
         containerEl.createEl('h3', { text: 'Behavior' });
 
         new Setting(containerEl)
-            .setName('Require Ctrl to Activate')
+            .setName('Require Modifier Key to Activate')
             .setDesc(
-                'When enabled, sidebars will only fly out when you hold the Ctrl key ' +
+                'When enabled, sidebars will only fly out when you hold the selected modifier key ' +
                 'while moving the mouse to the screen edge. Useful for accidental activation.'
             )
             .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.requireCtrlToActivate)
+                .setValue(this.plugin.settings.requireModifierKeyToActivate)
                 .onChange(async (value) => {
-                    this.plugin.settings.requireCtrlToActivate = value;
+                    this.plugin.settings.requireModifierKeyToActivate = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Modifier Key')
+            .setDesc('Which key must be held if the above setting is enabled.')
+            .addDropdown(dropdown => dropdown
+                .addOption('Control', 'Control / Command')
+                .addOption('Alt', 'Alt / Option')
+                .addOption('Shift', 'Shift')
+                .addOption('Meta', 'Meta / Windows')
+                .setValue(this.plugin.settings.modifierKey)
+                .onChange(async (value) => {
+                    this.plugin.settings.modifierKey = value;
                     await this.plugin.saveSettings();
                 }));
 
