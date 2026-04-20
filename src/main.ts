@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, WorkspaceSidedock, setIcon, Menu } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, WorkspaceSidedock, setIcon } from 'obsidian';
 import { SidebarHoverSettings, DEFAULT_SETTINGS, SidebarFlyoverSettingTab } from './settings';
 
 export default class SidebarFlyoverPlus extends Plugin {
@@ -9,6 +9,7 @@ export default class SidebarFlyoverPlus extends Plugin {
     isHoveringLeft: boolean = false;
     isHoveringRight: boolean = false;
 	private isMenuOpen = false;
+    private isInjectingDropdowns = false;
 
     // Handler function references
     documentClickHandler: (e: MouseEvent) => void;
@@ -990,17 +991,31 @@ export default class SidebarFlyoverPlus extends Plugin {
     injectDropdowns() {
         if (!this.settings.enableRightSidebarDropdown) return;
 
-        // Target all tab containers inside the right sidebar
-        const rightContainers = document.querySelectorAll('.workspace-split.mod-right-split .workspace-tab-header-container');
+        // GUARD: Prevent re-entry during injection
+        if (this.isInjectingDropdowns) {
+            console.log('🛑 INJECT: Already injecting, skipping...');
+            return;
+        }
 
-        rightContainers.forEach(container => {
-            // Prevent duplicate injections
-            if (container.querySelector('.right-sidebar-dropdown-btn')) {
-                this.updateDropdownState(container);
-                return;
+        this.isInjectingDropdowns = true;
+
+        const rightContainers = document.querySelectorAll(
+            '.workspace-split.mod-right-split .workspace-tab-header-container'
+        );
+
+        console.log('🔧 INJECT: Found', rightContainers.length, 'right sidebar containers');
+
+        rightContainers.forEach((container) => {
+            // Check if button already exists
+            let btn = container.querySelector('.right-sidebar-dropdown-btn') as HTMLElement;
+
+            if (btn) {
+                console.log('🔧 INJECT: Button already exists, skipping re-creation');
+                return; // Don't recreate if it already exists
             }
 
-            const btn = document.createElement('div');
+            // Create fresh button with handler
+            btn = document.createElement('div');
             btn.className = 'right-sidebar-dropdown-btn';
 
             const iconEl = document.createElement('div');
@@ -1017,14 +1032,38 @@ export default class SidebarFlyoverPlus extends Plugin {
             btn.appendChild(titleEl);
             btn.appendChild(chevronEl);
 
-            btn.addEventListener('click', (evt) => {
-                this.showMenu(evt, container);
-            });
+            console.log('🔧 INJECT: Created dropdown button, adding click handler');
 
-            // Prepend so it sits nicely if there are native UI action buttons on the right
-            container.insertBefore(btn, container.firstChild);
+            // Attach handler with triple redundancy
+            btn.addEventListener('click', (evt) => {
+                console.log('🖱️ BUTTON CLICKED!');
+                evt.stopPropagation();
+                evt.preventDefault();
+                this.showMenu(evt, container);
+            }, true);
+
+            // Fallback onclick
+            (btn as any).onclick = (evt: MouseEvent) => {
+                console.log('🖱️ BUTTON CLICKED (onclick)!');
+                evt.stopPropagation();
+                evt.preventDefault();
+                this.showMenu(evt, container);
+            };
+
+            console.log('🔧 INJECT: Button click handler registered');
+
+            // Insert at the END so it renders on top
+            container.appendChild(btn);
+
+            console.log('🔧 INJECT: Button added to container');
+
             this.updateDropdownState(container);
         });
+
+        // Clear guard after a delay to allow DOM to settle
+        setTimeout(() => {
+            this.isInjectingDropdowns = false;
+        }, 100);
     }
 
     updateAllDropdownStates() {
@@ -1059,66 +1098,104 @@ export default class SidebarFlyoverPlus extends Plugin {
 		evt.preventDefault();
 		evt.stopPropagation();
 
-		console.log('🔽 DROPDOWN: Opening menu, setting isMenuOpen=true');
-		// CRITICAL: Set flag BEFORE creating menu
+		console.log('🔽 DROPDOWN: Opening custom dropdown');
 		this.isMenuOpen = true;
 
-		// SAFETY: Force clear flag after 10s in case onHide never fires
-		const safetyTimeout = setTimeout(() => {
-			if (this.isMenuOpen) {
-				console.warn('Menu flag stuck open - force clearing');
-				this.isMenuOpen = false;
-			}
-		}, 10000);
+		// Create custom dropdown menu
+		const dropdown = document.createElement('div');
+		dropdown.addClass('custom-right-sidebar-dropdown');
+		dropdown.addClass('dropdown-active');
 
-		const menu = new Menu();
+		// Position it
+		const btnRect = (evt.currentTarget as HTMLElement).getBoundingClientRect();
+		dropdown.style.position = 'fixed';
+		dropdown.style.top = `${btnRect.bottom + 4}px`;
+		dropdown.style.left = `${btnRect.left}px`;
+		dropdown.style.minWidth = `${btnRect.width}px`;
+		dropdown.style.zIndex = '99999';
 
+		// Get all tabs
 		const tabHeaders = container.querySelectorAll(
 			'.workspace-tab-header:not(.right-sidebar-dropdown-btn)'
 		);
 
+		// Create menu items
 		tabHeaders.forEach((header: HTMLElement) => {
-			const title = header.getAttribute('aria-label') || header.innerText || 'Tab';
-			const dataType = header.getAttribute('data-type');
+			const title = header.getAttribute('aria-label') || 'Tab';
 			const isActive = header.classList.contains('is-active');
 
-			menu.addItem((item) => {
-				item.setTitle(title);
-				item.setChecked(isActive);
-				if (dataType) {
-					item.setIcon(dataType);
-				}
-				item.onClick(() => {
-					// Clear flag BEFORE clicking to allow normal sidebar behavior
-					this.isMenuOpen = false;
-					header.click();
-					setTimeout(() => {
-						this.updateAllDropdownStates();
-					}, 50);
-				});
+			const item = document.createElement('div');
+			item.addClass('custom-dropdown-item');
+			if (isActive) {
+				item.addClass('is-active');
+			}
+
+			// Add icon
+			const iconWrapper = document.createElement('div');
+			iconWrapper.addClass('custom-dropdown-item-icon');
+			const sourceIcon = header.querySelector('.workspace-tab-header-inner-icon');
+			if (sourceIcon) {
+				iconWrapper.innerHTML = sourceIcon.innerHTML;
+			}
+
+			// Add title
+			const titleWrapper = document.createElement('div');
+			titleWrapper.addClass('custom-dropdown-item-title');
+			titleWrapper.textContent = title;
+
+			item.appendChild(iconWrapper);
+			item.appendChild(titleWrapper);
+
+			// Click handler
+			item.addEventListener('click', (e) => {
+				e.stopPropagation();
+				console.log('📋 DROPDOWN: Item clicked:', title);
+
+				// Switch tabs
+				header.click();
+
+				// Close dropdown
+				this.closeDropdown(dropdown);
 			});
+
+			dropdown.appendChild(item);
 		});
 
-		// Register hide callback to clear flag when menu closes by ANY means
-		// (Escape key, click outside, etc.)
-		if (typeof (menu as any).onHide === 'function') {
-			(menu as any).onHide(() => {
-				clearTimeout(safetyTimeout);
-				console.log('🔼 DROPDOWN: Menu hidden, clearing isMenuOpen in 100ms');
-				setTimeout(() => {
-					this.isMenuOpen = false;
-					console.log('✅ DROPDOWN: isMenuOpen cleared');
-				}, 100);
-			});
-		}
+		// Append to body
+		document.body.appendChild(dropdown);
 
-		// Show the menu
-		if (typeof (menu as any).showAtMouseEvent === 'function') {
-			(menu as any).showAtMouseEvent(evt);
-		} else {
-			menu.showAtPosition({ x: evt.pageX, y: evt.pageY });
-		}
+		// Click outside to close
+		const closeHandler = (e: MouseEvent) => {
+			if (!dropdown.contains(e.target as Node) &&
+				!(e.target as HTMLElement).closest('.right-sidebar-dropdown-btn')) {
+				this.closeDropdown(dropdown);
+				document.removeEventListener('click', closeHandler);
+			}
+		};
 
-		// DO NOT set isMenuOpen = false here - let onHide handle it
+		// Delay to prevent immediate trigger
+		setTimeout(() => {
+			document.addEventListener('click', closeHandler);
+		}, 100);
+
+		// ESC key to close
+		const keyHandler = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				this.closeDropdown(dropdown);
+				document.removeEventListener('keydown', keyHandler);
+			}
+		};
+		document.addEventListener('keydown', keyHandler);
+	}
+
+	closeDropdown(dropdown: HTMLElement) {
+		console.log('🔼 DROPDOWN: Closing dropdown');
+		dropdown.remove();
+
+		// Clear flag after animations complete
+		setTimeout(() => {
+			this.isMenuOpen = false;
+			console.log('✅ DROPDOWN: isMenuOpen cleared');
+		}, 200);
 	}
 }
